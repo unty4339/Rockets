@@ -135,29 +135,57 @@ namespace SpaceLogistics.UI
 
         public void OnLaunchClicked()
         {
-            // ミッション検証と発射プロセス
-            // ここでは簡易的に、現在アクティブなターゲットへのミッションを開始する
-            
-            // 仮のルート設定（現在地 -> ランダムな目的地、あるいはMapManagerで選択）
-            // MVPではまずシーン遷移を確認するため、GameManagerの状態を変更するだけにする
             Debug.Log("Launching Rocket!");
-            
-            // ActiveRocketを生成するのはMissionManagerの役割
-            // ここではデバッグ用に、デフォルトルートで発射を試みる
-            
-            if (MissionManager.Instance != null && Space.MapManager.Instance != null && Space.MapManager.Instance.AllBodies.Count > 1)
+
+            // 1. MissionManagerの確認
+            if (MissionManager.Instance == null)
             {
-                // 仮：最初の天体から次の天体へ
-               var origin = Space.MapManager.Instance.AllBodies[0].GetComponentInChildren<SpaceLogistics.Structures.Base>(); 
-               // Baseがない場合のフォールバックは省略
-               
-               // 単純にシーン遷移だけ行う
-               GameManager.Instance.SetState(GameState.GlobalMap);
+                Debug.LogError("MissionManager not found!");
+                return;
+            }
+
+            // 2. ルートの設定（MVP用のダミー）
+            // マップ内に少なくとも2つの天体があれば、それらを結ぶルートを作成
+            if (Space.MapManager.Instance == null || Space.MapManager.Instance.AllBodies.Count < 2)
+            {
+                Debug.LogWarning("Not enough celestial bodies for a mission.");
+                // 天体が不足していても、とりあえず動作確認のためにnullルートで発射を試みるか、
+                // あるいはここであきらめる。ここではエラーを出してリターン。
+                return;
+            }
+
+            var originBody = Space.MapManager.Instance.AllBodies[0];
+            var destBody = Space.MapManager.Instance.AllBodies[1];
+
+            // 簡易的にRouteオブジェクトを作成 (本来はRoute Selection UIが必要)
+            Route dummyRoute = new GameObject("DummyRoute").AddComponent<Route>();
+            // Routeコンポーネントの構造に合わせる（親のCelestialBodyからBaseなどを取得する必要があるが、
+            // 現状のRoute.csはOrigin/DestinationがBase型）
+            
+            // 天体の子にBaseがあるか探す、なければ仮定する
+            var originBase = originBody.GetComponentInChildren<SpaceLogistics.Structures.Base>();
+            var destBase = destBody.GetComponentInChildren<SpaceLogistics.Structures.Base>();
+
+            // BaseがないとRouteが作れないので、テスト用に一時的にコンポーネント追加（乱暴だがテスト進行のため）
+            if (originBase == null) originBase = originBody.gameObject.AddComponent<SpaceLogistics.Structures.Base>();
+            if (destBase == null) destBase = destBody.gameObject.AddComponent<SpaceLogistics.Structures.Base>();
+
+            dummyRoute.Origin = originBase;
+            dummyRoute.Destination = destBase;
+            dummyRoute.RequiredDeltaV = 1000f; // テスト用の低い値
+
+            // 3. ミッション開始
+            ActiveRocket rocket = MissionManager.Instance.StartMission(dummyRoute, CurrentBlueprint);
+
+            if (rocket != null)
+            {
+                 Debug.Log("Mission Started Successfully!");
+                 // グローバルマップへ遷移してロケットを見る
+                 GameManager.Instance.SetState(GameState.GlobalMap);
             }
             else
             {
-                 // マップ画面へ戻る
-                 GameManager.Instance.SetState(GameState.LocalMap);
+                Debug.LogError("Mission Failed to Start.");
             }
         }
 

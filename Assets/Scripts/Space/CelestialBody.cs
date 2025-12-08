@@ -20,6 +20,7 @@ namespace SpaceLogistics.Space
 
         [Header("Map Positions")]
         public Vector3 AbstractGlobalPosition; // グローバルマップでの定位置 (アイコン表示用)
+        public float LocalMapRadius = 30.0f; // ローカルマップの表示限界半径 (Visual Scale)
 
         [Header("Orbit")]
         public CelestialBody ParentBody;
@@ -30,6 +31,24 @@ namespace SpaceLogistics.Space
         public SpriteRenderer BodyRenderer;
         public float VisualScaleLocal = 1.0f;
         public float VisualScaleGlobal = 1.0f; // GlobalViewLogScaleが1.0になったのでこちらも調整
+
+        // ... (Start/Awake omitted for brevity in replace if not touching) ...
+
+        /// <summary>
+        /// この天体が属する惑星系のルート天体（ローカルマップの中心）を取得する。
+        /// 例: 地球->地球, 月->地球, 火星->火星, フォボス->火星
+        /// </summary>
+        public CelestialBody GetSystemRoot()
+        {
+            // 親がいない、または親がSun（恒星）なら自分がルート
+            if (ParentBody == null) return this;
+            if (ParentBody.BodyName == "Sun") return this;
+            
+            // それ以外は親のルートを再帰的に返す
+            return ParentBody.GetSystemRoot();
+        }
+
+        // ... remaining methods ...
 
         private void Start()
         {

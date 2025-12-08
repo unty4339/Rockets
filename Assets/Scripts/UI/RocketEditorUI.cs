@@ -154,9 +154,9 @@ namespace SpaceLogistics.UI
                 return;
             }
 
-            // 明示的に "Earth" を出発地、 "Mars" を目的地にする
+            // 明示的に "Earth" を出発地、 "Moon" を目的地にする
             var originBody = Space.MapManager.Instance.AllBodies.Find(b => b.BodyName == "Earth");
-            var destBody = Space.MapManager.Instance.AllBodies.Find(b => b.BodyName == "Mars");
+            var destBody = Space.MapManager.Instance.AllBodies.Find(b => b.BodyName == "Moon");
 
             // 見つからない場合はリスト順のフォールバック
             if (originBody == null && Space.MapManager.Instance.AllBodies.Count > 0) originBody = Space.MapManager.Instance.AllBodies[0];

@@ -98,6 +98,7 @@ namespace SpaceLogistics.Space
             {
                 // 一旦すべて非表示にするのが安全、あるいは各メソッドで制御
                 bool isVisible = false;
+                body.SetSOIVisibility(false); // SOIはデフォルトで非表示
 
                 if (state == GameState.LocalMap)
                 {
@@ -131,6 +132,7 @@ namespace SpaceLogistics.Space
             {
                 body.transform.position = Vector3.zero; // 中心不動
                 body.transform.localScale = Vector3.one * body.VisualScaleLocal;
+                body.SetSOIVisibility(true); // 中心天体はSOIを表示
                 return true;
             }
             else if (body.ParentBody == ActiveLocalBody)
@@ -139,6 +141,7 @@ namespace SpaceLogistics.Space
                 Vector3 pos = body.GetLocalPosition(time);
                 body.transform.position = pos;
                 body.transform.localScale = Vector3.one * body.VisualScaleLocal;
+                body.SetSOIVisibility(true); // 衛星もSOIを表示
                 return true;
             }
             

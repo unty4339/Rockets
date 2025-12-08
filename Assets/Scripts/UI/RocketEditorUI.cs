@@ -189,8 +189,12 @@ namespace SpaceLogistics.UI
             if (rocket != null)
             {
                  Debug.Log("Mission Started Successfully!");
-                 // グローバルマップへ遷移してロケットを見る
-                 GameManager.Instance.SetState(GameState.GlobalMap);
+                 
+                // 強制的にローカルマップへ切り替え
+                Core.GameManager.Instance.SetState(Core.GameState.LocalMap);
+
+                // Hide editor
+                gameObject.SetActive(false);
             }
             else
             {
@@ -320,7 +324,7 @@ namespace SpaceLogistics.UI
                  btnTemplate.SetActive(false);
                  PartButtonPrefab = btnTemplate;
             }
-
+            
             // 6. アクションボタン (Clear, Launch)
             if (ClearButton == null)
             {

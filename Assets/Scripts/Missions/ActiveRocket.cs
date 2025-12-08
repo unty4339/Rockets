@@ -300,15 +300,15 @@ namespace SpaceLogistics.Missions
             Vector3 currentDestPos = destBody.GetLocalPosition(time);
             float distToDest = Vector3.Distance(transferPos, currentDestPos);
             
-            float visualSOI = 3.0f; // 仮置きSOI
+            // VisualSOIRadiusを使用
+            float visualSOI = destBody.VisualSOIRadius;
 
             if (distToDest < visualSOI)
             {
                 // SOI内部: 目的地中心の座標系へ遷移
                 Vector3 approachDir = (transferPos - currentDestPos).normalized;
-                // 最終的に近づく距離 (周回半径)
-                // 到着周回半径も適宜調整
-                float orbitRad = (float)(destBody.Radius.ToKilometers() / 1000.0 * 2.0 + 1.0);
+                // 最終的に近づく距離 (周回半径) = SOIの半分くらいまで寄る
+                float orbitRad = visualSOI * 0.5f;
                 Vector3 finalOrbitPos = currentDestPos + approachDir * orbitRad;
                 
                 // ブレンド率

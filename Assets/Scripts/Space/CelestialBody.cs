@@ -11,7 +11,6 @@ namespace SpaceLogistics.Space
     public class CelestialBody : MonoBehaviour
     {
         [Header("Body Stats")]
-        [Header("Body Stats")]
         public string BodyName;
         public Mass Mass; // PhysicsTypes.Mass
         public Distance Radius; // PhysicsTypes.Distance
@@ -31,37 +30,13 @@ namespace SpaceLogistics.Space
         public SpriteRenderer BodyRenderer;
         public float VisualScaleLocal = 1.0f;
         public float VisualScaleGlobal = 1.0f; // GlobalViewLogScaleが1.0になったのでこちらも調整
+        
+        // SOIの見た目上の半径 (Local Map)
+        public float VisualSOIRadius => VisualScaleLocal * 3.0f; // 本体半径の3倍などを仮定
 
-        // ... (Start/Awake omitted for brevity in replace if not touching) ...
+        private LineRenderer _soiLineRenderer;
 
-        /// <summary>
-        /// この天体が属する惑星系のルート天体（ローカルマップの中心）を取得する。
-        /// 例: 地球->地球, 月->地球, 火星->火星, フォボス->火星
-        /// </summary>
-        public CelestialBody GetSystemRoot()
-        {
-            // 親がいない、または親がSun（恒星）なら自分がルート
-            if (ParentBody == null) return this;
-            if (ParentBody.BodyName == "Sun") return this;
-            
-            // それ以外は親のルートを再帰的に返す
-            return ParentBody.GetSystemRoot();
-        }
-
-        // ... remaining methods ...
-
-        private void Start()
-        {
-            if (BodyRenderer == null)
-                BodyRenderer = GetComponent<SpriteRenderer>();
-        }
-
-        // 互換性維持のためのヘルパー (Inspector設定用には別途エディタ拡張が必要だが、今回はコードで初期化前提か既存値を読み替える)
-        // 注意: Inspectorのdoubleフィールドはシリアライズされない可能性があるため、OnValidateなどでfloatから変換するなどの工夫が必要だが、
-        // 今回の要件ではPhysicsTypesを導入したため、Inspectorでの直接入力が難しくなる。
-        // MVPとしては、Awake等で初期値をセットするか、[SerializeField]なdoubleラッパーを使うのが定石。
-        // ここでは、Inspectorで設定した値を保持するためのフィールドを残し、RuntimeでPhysicsTypesに変換するアプローチを取る。
-
+        // Inspector用フィールド
         [SerializeField] private double _massKg;
         [SerializeField] private double _radiusKm;
         [SerializeField] private double _soiRadiusKm;
@@ -79,6 +54,71 @@ namespace SpaceLogistics.Space
             Mass = new Mass(_massKg);
             Radius = Distance.FromKilometers(_radiusKm);
             SOIRadius = Distance.FromKilometers(_soiRadiusKm);
+        }
+
+        private void Start()
+        {
+            if (BodyRenderer == null)
+                BodyRenderer = GetComponentInChildren<SpriteRenderer>();
+
+            UpdateVisualScale();
+
+            // SOI表示用LineRendererのセットアップ
+            _soiLineRenderer = GetComponent<LineRenderer>();
+            if (_soiLineRenderer == null)
+            {
+                _soiLineRenderer = gameObject.AddComponent<LineRenderer>();
+            }
+            SetupSOIVisual();
+        }
+        
+        private void UpdateVisualScale()
+        {
+            // 必要に応じてスケール更新ロジック
+        }
+
+        /// <summary>
+        /// この天体が属する惑星系のルート天体（ローカルマップの中心）を取得する。
+        /// 例: 地球->地球, 月->地球, 火星->火星, フォボス->火星
+        /// </summary>
+        public CelestialBody GetSystemRoot()
+        {
+            // 親がいない、または親がSun（恒星）なら自分がルート
+            if (ParentBody == null) return this;
+            if (ParentBody.BodyName == "Sun") return this;
+            
+            // それ以外は親のルートを再帰的に返す
+            return ParentBody.GetSystemRoot();
+        }
+
+        private void SetupSOIVisual()
+        {
+            _soiLineRenderer.useWorldSpace = false;
+            _soiLineRenderer.loop = true;
+            _soiLineRenderer.positionCount = 50;
+            _soiLineRenderer.startWidth = 0.05f;
+            _soiLineRenderer.endWidth = 0.05f;
+            _soiLineRenderer.material = new Material(Shader.Find("Sprites/Default"));
+            _soiLineRenderer.startColor = new Color(1f, 1f, 1f, 0.2f);
+            _soiLineRenderer.endColor = new Color(1f, 1f, 1f, 0.2f);
+            
+            // 円を描画
+            float r = VisualSOIRadius;
+            for (int i = 0; i < 50; i++)
+            {
+                float angle = i * (2f * Mathf.PI / 50f);
+                float x = Mathf.Cos(angle) * r;
+                float y = Mathf.Sin(angle) * r;
+                _soiLineRenderer.SetPosition(i, new Vector3(x, y, 0));
+            }
+            
+            // デフォルトは非表示、MapManagerで制御してもよい
+            _soiLineRenderer.enabled = false;
+        }
+        
+        public void SetSOIVisibility(bool visible)
+        {
+            if (_soiLineRenderer != null) _soiLineRenderer.enabled = visible;
         }
 
         /// <summary>

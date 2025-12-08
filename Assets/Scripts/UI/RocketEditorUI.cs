@@ -154,13 +154,23 @@ namespace SpaceLogistics.UI
                 return;
             }
 
-            var originBody = Space.MapManager.Instance.AllBodies[0];
-            var destBody = Space.MapManager.Instance.AllBodies[1];
+            // 明示的に "Earth" を出発地、 "Mars" を目的地にする
+            var originBody = Space.MapManager.Instance.AllBodies.Find(b => b.BodyName == "Earth");
+            var destBody = Space.MapManager.Instance.AllBodies.Find(b => b.BodyName == "Mars");
+
+            // 見つからない場合はリスト順のフォールバック
+            if (originBody == null && Space.MapManager.Instance.AllBodies.Count > 0) originBody = Space.MapManager.Instance.AllBodies[0];
+            if (destBody == null && Space.MapManager.Instance.AllBodies.Count > 1) destBody = Space.MapManager.Instance.AllBodies[1];
+            
+            // それでもnullならエラー
+            if (originBody == null || destBody == null)
+            {
+                 Debug.LogError("Could not determine Origin or Destination bodies.");
+                 return;
+            }
 
             // 簡易的にRouteオブジェクトを作成 (本来はRoute Selection UIが必要)
-            Route dummyRoute = new GameObject("DummyRoute").AddComponent<Route>();
-            // Routeコンポーネントの構造に合わせる（親のCelestialBodyからBaseなどを取得する必要があるが、
-            // 現状のRoute.csはOrigin/DestinationがBase型）
+            // RouteはMonoBehaviourではないのでnewで作成する
             
             // 天体の子にBaseがあるか探す、なければ仮定する
             var originBase = originBody.GetComponentInChildren<SpaceLogistics.Structures.Base>();
@@ -170,8 +180,7 @@ namespace SpaceLogistics.UI
             if (originBase == null) originBase = originBody.gameObject.AddComponent<SpaceLogistics.Structures.Base>();
             if (destBase == null) destBase = destBody.gameObject.AddComponent<SpaceLogistics.Structures.Base>();
 
-            dummyRoute.Origin = originBase;
-            dummyRoute.Destination = destBase;
+            Route dummyRoute = new Route(originBase, destBase, TrajectoryProfile.Hohmann);
             dummyRoute.RequiredDeltaV = 1000f; // テスト用の低い値
 
             // 3. ミッション開始

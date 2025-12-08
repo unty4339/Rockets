@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c501789486138924babff1bcf7501061, type: 3}
   m_Name: FuelTank_Small
   m_EditorClassIdentifier: 
-  PartName: 
-  Type: 0
-  MassDry: 0
-  Cost: 0
+  PartName: FuelTank_Small
+  Type: 1
+  MassDry: 0.1
+  Cost: 500
   Thrust: 0
   Isp: 0
-  FuelCapacity: 0
+  FuelCapacity: 2

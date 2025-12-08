@@ -17,7 +17,7 @@ namespace SpaceLogistics.Space
         public List<CelestialBody> AllBodies = new List<CelestialBody>();
         
         [Header("Settings")]
-        public float GlobalViewLogScale = 0.001f; // グローバル表示時の縮尺係数
+        public float GlobalViewLogScale = 1.0f; // テスト用に等倍(1.0)に変更。本来は0.001fなどで広大な宇宙を表現する。
         public CelestialBody ActiveLocalBody; // ローカルビューでの中心天体
 
         private void Awake()
@@ -90,70 +90,85 @@ namespace SpaceLogistics.Space
         /// <summary>
         /// すべての天体の描画更新を行う。
         /// </summary>
-        /// <param name="time">現在の宇宙時間</param>
         private void RenderVisuals(double time)
         {
             GameState state = GameManager.Instance.CurrentState;
 
             foreach (var body in AllBodies)
             {
+                // 一旦すべて非表示にするのが安全、あるいは各メソッドで制御
+                bool isVisible = false;
+
                 if (state == GameState.LocalMap)
                 {
-                    UpdateLocalMap(body, time);
+                    isVisible = UpdateLocalMap(body, time);
                 }
                 else if (state == GameState.GlobalMap)
                 {
-                    UpdateGlobalMap(body, time);
+                    isVisible = UpdateGlobalMap(body, time);
                 }
+
+                if (body.BodyRenderer != null) body.BodyRenderer.enabled = isVisible;
             }
             
-            // ローカルマップ時はActiveLocalBodyを中心にカメラを追従させる
-            if (state == GameState.LocalMap && ActiveLocalBody != null)
+            // カメラ追従は不要（中心固定のため、カメラも(0,0,-10)固定でOKだが、ズーム操作は残す）
+            if (state == GameState.LocalMap && MainCamera != null)
             {
-                if (MainCamera != null)
-                {
-                    Vector3 targetPos = ActiveLocalBody.transform.position;
-                    targetPos.z = -10;
-                    MainCamera.transform.position = targetPos;
-                }
+                // 常に原点を見る
+                Vector3 targetPos = Vector3.zero; 
+                targetPos.z = -10;
+                MainCamera.transform.position = targetPos;
             }
         }
 
-        /// <summary>
-        /// ローカルマップモードでの天体更新。
-        /// 物理的な位置関係に基づいて配置する。
-        /// </summary>
-        private void UpdateLocalMap(CelestialBody body, double time)
+        private bool UpdateLocalMap(CelestialBody body, double time)
         {
-            Vector3 localPos = body.GetLocalPosition(time);
+            // 表示対象:
+            // 1. ActiveLocalBody そのもの (中心)
+            // 2. ActiveLocalBody の子 (衛星)
             
-            // 親がいる場合は親の位置を加算してワールド座標を決定する
-            Vector3 parentPos = Vector3.zero;
-            if (body.ParentBody != null)
+            if (body == ActiveLocalBody)
             {
-                parentPos = body.ParentBody.transform.position;
+                body.transform.position = Vector3.zero; // 中心不動
+                body.transform.localScale = Vector3.one * body.VisualScaleLocal;
+                return true;
+            }
+            else if (body.ParentBody == ActiveLocalBody)
+            {
+                // 親がActiveなので、GetLocalPositionで軌道位置を取得
+                Vector3 pos = body.GetLocalPosition(time);
+                body.transform.position = pos;
+                body.transform.localScale = Vector3.one * body.VisualScaleLocal;
+                return true;
             }
             
-            body.transform.position = parentPos + localPos;
-            body.transform.localScale = Vector3.one * body.VisualScaleLocal;
-            
-            // レンダラーを有効化
-            if (body.BodyRenderer != null) body.BodyRenderer.enabled = true;
+            // それ以外は非表示
+            return false;
         }
 
-        /// <summary>
-        /// グローバルマップモードでの天体更新。
-        /// 縮小スケールを適用し、全体が見渡せるように配置する。
-        /// </summary>
-        private void UpdateGlobalMap(CelestialBody body, double time)
+        private bool UpdateGlobalMap(CelestialBody body, double time)
         {
-            Vector3 globalPos = body.GetGlobalPosition(time);
+            // 表示対象:
+            // 1. 親がいない天体 (太陽) ? 
+            // 2. 主要な惑星 (Earth, Mars) -> これらはどこレベル？
+            // 抽象マップの設計によるが、今回は「親がいない or 親が太陽」を表示とするか、
+            // 単純に「AbstractGlobalPositionが設定されているもの」を表示とする。
             
-            // グローバルスケール係数を適用
-            body.transform.position = globalPos * GlobalViewLogScale;
-            body.transform.localScale = Vector3.one * body.VisualScaleGlobal;
+            // 天体が持つAbstractGlobalPositionを使う
+            // ただし、月などの衛星をグローバルマップでどうするか？通常は表示しないか、惑星に追従するアイコンにする。
+            // 今回はシンプルに「主要惑星のみ表示」とする。
+            // 判定基準: 親がSun、または親がnull
             
-            if (body.BodyRenderer != null) body.BodyRenderer.enabled = true;
+            bool isMajor = (body.ParentBody == null || body.ParentBody.BodyName == "Sun"); // 簡易判定
+            
+            if (isMajor)
+            {
+                body.transform.position = body.GetGlobalPosition(time);
+                body.transform.localScale = Vector3.one * body.VisualScaleGlobal;
+                return true;
+            }
+            
+            return false;
         }
     }
 }

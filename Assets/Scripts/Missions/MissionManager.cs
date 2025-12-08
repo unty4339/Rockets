@@ -67,6 +67,18 @@ namespace SpaceLogistics.Missions
                 rocket.Blueprint = blueprint;
                 rocket.AssignedRoute = route;
                 
+                // 初期位置を設定 (Originの場所へ)
+                if (route.Origin != null)
+                {
+                    // CelestialBodyを取得
+                    var body = route.Origin.GetComponentInParent<Space.CelestialBody>();
+                    if (body != null)
+                    {
+                        // ひとまずグローバル位置に合わせておく（直後にLaunchで更新されるが念のため）
+                        rocket.transform.position = body.GetGlobalPosition(0);
+                    }
+                }
+
                 // 発射初期化
                 if (Core.TimeManager.Instance != null)
                 {

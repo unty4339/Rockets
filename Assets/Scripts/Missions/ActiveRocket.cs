@@ -67,52 +67,31 @@ namespace SpaceLogistics.Missions
         /// <param name="time">現在の宇宙時間</param>
         public void UpdatePosition(double time)
         {
-            // 簡易ステートマシン
+            // 現在のモードを取得
+            bool isGlobalMap = GameManager.Instance.CurrentState == GameState.GlobalMap;
+
+            // 1. Global Map Mode
+            if (isGlobalMap)
+            {
+                UpdateGlobalPosition(time);
+                return;
+            }
+            
+            // 2. Local Map Mode
+            // ロケットがいる場所（AssignedRoute.Origin か Destination, あるいは Transit中）と、
+            // 表示中の ActiveLocalBody が一致するかどうかで表示を切り替える。
+            
+            var activeBody = MapManager.Instance.ActiveLocalBody;
             
             if (State == RocketState.Local_Ascending)
             {
-                // 数秒間上昇演出を行った後、グローバル移動へ移行する
-                if (time - LaunchTime > 10.0f) // 10秒間上昇
+                // 出発地にいる
+                var origin = AssignedRoute.Origin.GetComponentInParent<CelestialBody>();
+                if (origin == activeBody)
                 {
-                    State = RocketState.Global_Transit;
-                }
-                
-                // 出発地がアクティブなローカルマップなら表示する
-                if (MapManager.Instance.ActiveLocalBody == AssignedRoute.Origin.GetComponentInParent<CelestialBody>())
-                {
-                   // 上昇移動
-                   transform.position += Vector3.up * (float)(time - LaunchTime) * 0.1f; 
-                   SetVisuals(true);
-                }
-                else
-                {
-                    SetVisuals(false);
-                }
-            }
-            else if (State == RocketState.Global_Transit)
-            {
-                if (time >= ArrivalTime)
-                {
-                    State = RocketState.Local_Orbiting;
-                    // 到着イベントがあればここで発火
-                    return;
-                }
-
-                if (GameManager.Instance.CurrentState == GameState.GlobalMap)
-                {
-                    // 惑星間を線形補間（Lerp）で移動する
-                    double totalDuration = ArrivalTime - LaunchTime;
-                    double elapsed = time - LaunchTime;
-                    float progress = (float)(elapsed / totalDuration);
-
-                    Vector3 startPos = AssignedRoute.Origin.GetComponentInParent<CelestialBody>().GetGlobalPosition(time);
-                    Vector3 endPos = AssignedRoute.Destination.GetComponentInParent<CelestialBody>().GetGlobalPosition(time);
-                    
-                    // 単純な線形移動
-                    Vector3 currentPos = Vector3.Lerp(startPos, endPos, progress);
-                    
-                    // グローバルスケールを適用
-                    transform.position = currentPos * MapManager.Instance.GlobalViewLogScale;
+                    // 中心天体から離れていく演出
+                    // 中心天体は(0,0)にいるので、単純にUp方向へ
+                    transform.position = Vector3.up * (2.0f + (float)(time - LaunchTime) * 0.5f);
                     SetVisuals(true);
                 }
                 else
@@ -122,17 +101,69 @@ namespace SpaceLogistics.Missions
             }
             else if (State == RocketState.Local_Orbiting)
             {
-                // 目的地での周回
-                 if (MapManager.Instance.ActiveLocalBody == AssignedRoute.Destination.GetComponentInParent<CelestialBody>())
-                {
-                   // 簡易的な周回表示
-                   transform.position = MapManager.Instance.ActiveLocalBody.transform.position + new Vector3(2, 2, 0); 
-                   SetVisuals(true);
-                }
-                else
-                {
-                    SetVisuals(false);
-                }
+                 // 目的地にいる
+                 var dest = AssignedRoute.Destination.GetComponentInParent<CelestialBody>();
+                 if (dest == activeBody)
+                 {
+                     // 中心天体(0,0)の周りを回る演出（固定位置）
+                     transform.position = new Vector3(2, 2, 0);
+                     SetVisuals(true);
+                 }
+                 else
+                 {
+                     SetVisuals(false);
+                 }
+            }
+            else if (State == RocketState.Global_Transit)
+            {
+                // ローカルマップでは、トランジット中のロケットは見えない（あるいは出発/到着付近なら見えるかもだが、基本非表示）
+                SetVisuals(false);
+            }
+            
+            // 状態遷移ロジック
+            if (State == RocketState.Local_Ascending && time - LaunchTime > 5.0f)
+            {
+                State = RocketState.Global_Transit;
+            }
+            if (State == RocketState.Global_Transit && time >= ArrivalTime)
+            {
+                State = RocketState.Local_Orbiting;
+            }
+        }
+
+        private void UpdateGlobalPosition(double time)
+        {
+            // グローバルマップでの表示
+            
+            if (State == RocketState.Local_Ascending)
+            {
+                // 出発地の座標
+                var origin = AssignedRoute.Origin.GetComponentInParent<CelestialBody>();
+                transform.position = origin.GetGlobalPosition(time); 
+                SetVisuals(true);
+            }
+            else if (State == RocketState.Global_Transit)
+            {
+                double totalDuration = ArrivalTime - LaunchTime;
+                double elapsed = time - LaunchTime;
+                float progress = (float)(elapsed / totalDuration); // 0.0 - 1.0
+
+                var origin = AssignedRoute.Origin.GetComponentInParent<CelestialBody>();
+                var dest = AssignedRoute.Destination.GetComponentInParent<CelestialBody>();
+
+                Vector3 startPos = origin.GetGlobalPosition(time);
+                Vector3 endPos = dest.GetGlobalPosition(time);
+                
+                // アイコン間を直線移動
+                transform.position = Vector3.Lerp(startPos, endPos, progress);
+                SetVisuals(true);
+            }
+            else if (State == RocketState.Local_Orbiting)
+            {
+                // 到着地の座標
+                var dest = AssignedRoute.Destination.GetComponentInParent<CelestialBody>();
+                transform.position = dest.GetGlobalPosition(time);
+                SetVisuals(true);
             }
         }
 

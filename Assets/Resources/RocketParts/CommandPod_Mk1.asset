@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c501789486138924babff1bcf7501061, type: 3}
   m_Name: CommandPod_Mk1
   m_EditorClassIdentifier: 
-  PartName: 
-  Type: 0
-  MassDry: 0
-  Cost: 0
+  PartName: CommandPod_Mk1
+  Type: 2
+  MassDry: 0.5
+  Cost: 1000
   Thrust: 0
   Isp: 0
   FuelCapacity: 0

@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c501789486138924babff1bcf7501061, type: 3}
   m_Name: Engine_Powerful
   m_EditorClassIdentifier: 
-  PartName: 
+  PartName: Engine_Powerful
   Type: 0
-  MassDry: 0
-  Cost: 0
-  Thrust: 0
-  Isp: 0
+  MassDry: 1
+  Cost: 3000
+  Thrust: 250
+  Isp: 310
   FuelCapacity: 0

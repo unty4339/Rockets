@@ -214,7 +214,7 @@ namespace SpaceLogistics.Missions
         {
             var activeBody = MapManager.Instance.ActiveLocalBody;
             var originBody = AssignedRoute.Origin.GetComponentInParent<CelestialBody>();
-            var root = originBody.GetSystemRoot(); // LocalなのでOriginもDestも同じRoot
+            var root = originBody.GetSystemRoot();
             var destBody = AssignedRoute.Destination.GetComponentInParent<CelestialBody>();
             
             // GlobalMapでは、この系の位置にずっといる
@@ -232,53 +232,97 @@ namespace SpaceLogistics.Missions
                 return;
             }
 
-            State = RocketState.Local_Ascending; // 便宜上
+            State = RocketState.Local_Ascending;
 
             double totalDuration = ArrivalTime - LaunchTime;
             double elapsed = time - LaunchTime;
             double progress = elapsed / totalDuration;
-
+            
             if (progress >= 1.0)
             {
                 State = RocketState.Local_Orbiting;
-                transform.position = destBody.GetLocalPosition(time) + Vector3.up * 1.0f;
+                // 到着時の周回軌道 (簡易)
+                // 半径をToKilometers等で計算すべきだが、ここでは簡易的に
+                // 1000km = 1 unit
+                transform.position = destBody.GetLocalPosition(time) + Vector3.up * (float)(destBody.Radius.ToKilometers() / 1000.0 * 1.5 + 1.0); 
                 SetVisuals(true);
                 return;
             }
+
+            // --- パッチドコニックス近似 (Hohmann Transfer like) ---
+
+            // 1. 各天体の絶対軌道半径を取得 (LocalPositionのMagnitude)
+            Vector3 originPosStart = originBody.GetLocalPosition(LaunchTime);
+            Vector3 destPosEnd = destBody.GetLocalPosition(ArrivalTime);
+
+            double r1 = originPosStart.magnitude;
+            double r2 = destPosEnd.magnitude;
+
+            // 中心から近すぎる場合 (中心天体からの発射など) は最小半径を確保
+            if (r1 < 0.1) r1 = 0.5; // 仮のParking Orbit Radius
+            if (r2 < 0.1) r2 = 0.5;
+
+            // 2. 遷移軌道のパラメータ計算 (楕円)
+            double majorAxis = r1 + r2;
+            double a = majorAxis / 2.0; // 半長軸
+            double e = System.Math.Abs(r2 - r1) / majorAxis; // 離心率
+
+            // 3. 進行度から現在の半径 r を計算
+            // Progress 0.0 -> 近点 (or 遠点), 1.0 -> 遠点 (or 近点)
+            // 真近点角 nu : 0 -> PI
+            double nu = progress * System.Math.PI;
             
-            // ホーマン遷移風の曲線移動
-            Vector3 p1 = originBody.GetLocalPosition(time);
-            Vector3 p2 = destBody.GetLocalPosition(time);
-            
-            Vector3 currentPos;
-            
-            if (p1.magnitude < 0.1f) // Center -> Satellite
+            double r;
+            if (r1 < r2) // 外向き
             {
-                // 直線的、かつスパイラルっぽく
-                Vector3 targetDir = p2.normalized;
-                // 進行度に応じて角度をずらす (渦巻き)
-                float angleOffset = (1.0f - (float)progress) * 90.0f * Mathf.Deg2Rad; 
-                float x = Mathf.Cos(angleOffset) * targetDir.x - Mathf.Sin(angleOffset) * targetDir.y;
-                float y = Mathf.Sin(angleOffset) * targetDir.x + Mathf.Cos(angleOffset) * targetDir.y;
-                Vector3 spiralDir = new Vector3(x, y, 0);
+                r = a * (1 - e * e) / (1 + e * System.Math.Cos(nu));
+            }
+            else // 内向き
+            {
+                // 内向きの場合、r1(始点)が遠点
+                r = a * (1 - e * e) / (1 - e * System.Math.Cos(nu)); 
+            }
+
+            // 4. 角度の補間
+            float startAngle = Mathf.Atan2(originPosStart.y, originPosStart.x) * Mathf.Rad2Deg;
+            float endAngle = Mathf.Atan2(destPosEnd.y, destPosEnd.x) * Mathf.Rad2Deg;
+            
+            float currentAngleDeg = Mathf.LerpAngle(startAngle, endAngle, (float)progress);
+            float currentAngleRad = currentAngleDeg * Mathf.Deg2Rad;
+
+            // 5. 親天体中心の座標 (Hohmann Path)
+            float x = (float)(r * System.Math.Cos(currentAngleRad));
+            float y = (float)(r * System.Math.Sin(currentAngleRad));
+            Vector3 transferPos = new Vector3(x, y, 0);
+
+            // 6. SOI (重力圏) ブレンド
+            // 目的地の現在の位置
+            Vector3 currentDestPos = destBody.GetLocalPosition(time);
+            float distToDest = Vector3.Distance(transferPos, currentDestPos);
+            
+            float visualSOI = 3.0f; // 仮置きSOI
+
+            if (distToDest < visualSOI)
+            {
+                // SOI内部: 目的地中心の座標系へ遷移
+                Vector3 approachDir = (transferPos - currentDestPos).normalized;
+                // 最終的に近づく距離 (周回半径)
+                // 到着周回半径も適宜調整
+                float orbitRad = (float)(destBody.Radius.ToKilometers() / 1000.0 * 2.0 + 1.0);
+                Vector3 finalOrbitPos = currentDestPos + approachDir * orbitRad;
                 
-                currentPos = spiralDir * (p2.magnitude * (float)progress);
+                // ブレンド率
+                float blend = 1.0f - (distToDest / visualSOI);
+                blend = Mathf.Clamp01(blend);
+                blend = blend * blend * (3f - 2f * blend); // SmoothStep
+
+                transform.position = Vector3.Lerp(transferPos, finalOrbitPos, blend);
             }
-            else if (p2.magnitude < 0.1f) // Satellite -> Center
+            else
             {
-                // 逆渦巻き
-                 currentPos = Vector3.Lerp(p1, p2, (float)progress);
-            }
-            else // Sat -> Sat
-            {
-                currentPos = Vector3.Slerp(p1, p2, (float)progress);
-                float r1 = p1.magnitude;
-                float r2 = p2.magnitude;
-                float currentR = Mathf.Lerp(r1, r2, (float)progress);
-                currentPos = currentPos.normalized * currentR;
+                transform.position = transferPos;
             }
             
-            transform.position = currentPos;
             SetVisuals(true);
         }
 

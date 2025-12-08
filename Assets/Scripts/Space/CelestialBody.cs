@@ -32,7 +32,34 @@ namespace SpaceLogistics.Space
         public float VisualScaleGlobal = 1.0f; // GlobalViewLogScaleが1.0になったのでこちらも調整
         
         // SOIの見た目上の半径 (Local Map)
-        public float VisualSOIRadius => VisualScaleLocal * 3.0f; // 本体半径の3倍などを仮定
+        public float VisualSOIRadius
+        {
+            get
+            {
+                // 物理計算ベース
+                // r = a * (m/M)^(2/5)
+                if (ParentBody == null) return VisualScaleLocal * 10f; // 親がいない場合は適当
+
+                double m = Mass.Kilograms;
+                double M = ParentBody.Mass.Kilograms;
+                if (M <= 0) return VisualScaleLocal * 3.0f; // Avoid div 0
+
+                // 軌道長半径 (Local Map上の距離)
+                // OrbitData.SemiMajorAxis はVisual単位とする
+                double a = OrbitData.SemiMajorAxis;
+                if (a <= 0) 
+                {
+                     // 中心天体の場合
+                     return VisualScaleLocal * 5.0f;
+                }
+
+                double ratio = m / M;
+                double r_soi = a * System.Math.Pow(ratio, 0.4);
+
+                // Convert Meters to Unity Units
+                return (float)(r_soi * MapManager.MapScale);
+            }
+        }
 
         private LineRenderer _soiLineRenderer;
 
@@ -102,8 +129,12 @@ namespace SpaceLogistics.Space
             _soiLineRenderer.startColor = new Color(1f, 1f, 1f, 0.2f);
             _soiLineRenderer.endColor = new Color(1f, 1f, 1f, 0.2f);
             
-            // 円を描画
+            // 半径計算
             float r = VisualSOIRadius;
+            
+            // 安全策: 小さすぎると見えないのでMinキャップ
+            if (r < VisualScaleLocal * 1.2f) r = VisualScaleLocal * 1.5f;
+
             for (int i = 0; i < 50; i++)
             {
                 float angle = i * (2f * Mathf.PI / 50f);

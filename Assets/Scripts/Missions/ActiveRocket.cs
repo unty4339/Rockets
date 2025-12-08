@@ -68,8 +68,45 @@ namespace SpaceLogistics.Missions
                 
                 IsGlobalMission = (originRoot != destRoot);
                 
-                double duration = IsGlobalMission ? 20.0 : 10.0; // グローバルは長め
-                ArrivalTime = time + duration;
+                if (IsGlobalMission)
+                {
+                    // Global Mission: 従来通り適当な固定値（または後ほど物理化）
+                    double duration = 20.0;
+                    ArrivalTime = time + duration;
+                }
+                else
+                {
+                    // Local Mission: Hohmann Transfer Time Calculation
+                    // T = pi * sqrt(a^3 / mu)
+                    // a = (r1 + r2) / 2
+                    // mu = G * M
+                    
+                    var originBody = AssignedRoute.Origin.GetComponentInParent<CelestialBody>();
+                    var destBody = AssignedRoute.Destination.GetComponentInParent<CelestialBody>();
+                    var root = originBody.GetSystemRoot();
+                    
+                    // 現在の距離（軌道半径）を取得
+                    double r1 = originBody.GetLocalPosition(time).magnitude;
+                    double r2 = destBody.GetLocalPosition(time).magnitude; // 到着時位置は近似的に現在距離を使う（厳密にはLaunchWindow等の計算が必要だがMVPでは簡易化）
+                    
+                    // 近すぎてゼロ除算等を防ぐ
+                    if (r1 < 0.1) r1 = 0.5;
+                    if (r2 < 0.1) r2 = 0.5;
+                    
+                    double a_transfer = (r1 + r2) / 2.0;
+                    double mu = PhysicsConstants.GameGravitationalConstant * root.Mass.Kilograms;
+                    
+                    if (mu > 0 && a_transfer > 0)
+                    {
+                        double duration = System.Math.PI * System.Math.Sqrt(System.Math.Pow(a_transfer, 3) / mu);
+                        ArrivalTime = time + duration;
+                    }
+                    else
+                    {
+                        // Fallback
+                        ArrivalTime = time + 10.0;
+                    }
+                }
             }
         }
 
@@ -268,20 +305,21 @@ namespace SpaceLogistics.Missions
             double e = System.Math.Abs(r2 - r1) / majorAxis; // 離心率
 
             // 3. 進行度から現在の半径 r を計算
-            // Progress 0.0 -> 近点 (or 遠点), 1.0 -> 遠点 (or 近点)
-            // 真近点角 nu : 0 -> PI
-            double nu = progress * System.Math.PI;
+            // Progressは時間進行度 (0.0 -> 1.0)
+            // これを Mean Anomaly (0 -> PI) として扱う
+            // 近点(Perigee) -> 遠点(Apogee) への移動
             
-            double r;
-            if (r1 < r2) // 外向き
-            {
-                r = a * (1 - e * e) / (1 + e * System.Math.Cos(nu));
-            }
-            else // 内向き
-            {
-                // 内向きの場合、r1(始点)が遠点
-                r = a * (1 - e * e) / (1 - e * System.Math.Cos(nu)); 
-            }
+            double meanAnomaly = progress * System.Math.PI;
+
+            // Kepler方程式を解いて True Anomaly (nu) を求める
+            // ここでは簡易的に、eを使ってOrbitalMathで解く
+            // ただし、OrbitalMathがない場合や、今回の実装範囲でインライン化するか
+            // 今回は新しく作ったOrbitalMathを使う
+            double E = SpaceLogistics.Rocketry.OrbitalMath.SolveKepler(meanAnomaly, e);
+            double nu = SpaceLogistics.Rocketry.OrbitalMath.EccentricToTrueAnomaly(E, e);
+            
+            // 半径 r の計算 (極座標)
+            double r = a * (1 - e * e) / (1 + e * System.Math.Cos(nu));
 
             // 4. 角度の補間
             float startAngle = Mathf.Atan2(originPosStart.y, originPosStart.x) * Mathf.Rad2Deg;

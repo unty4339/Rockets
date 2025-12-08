@@ -82,4 +82,12 @@ namespace SpaceLogistics.Core
         public static Speed operator +(Speed a, Speed b) => new Speed(a.MetersPerSecond + b.MetersPerSecond);
         public static Speed operator -(Speed a, Speed b) => new Speed(a.MetersPerSecond - b.MetersPerSecond);
     }
+    public static class PhysicsConstants
+    {
+        // 物理ベースの速度調整用定数 (G)
+        // Physics-based speed tuning:
+        // Real G = 6.674e-11
+        // Adjusted to make Moon period (distance 30) around 60-120 seconds.
+        public const double GameGravitationalConstant = 6.674e-11;
+    }
 }

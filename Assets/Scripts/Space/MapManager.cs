@@ -20,6 +20,9 @@ namespace SpaceLogistics.Space
         public float GlobalViewLogScale = 1.0f; // テスト用に等倍(1.0)に変更。本来は0.001fなどで広大な宇宙を表現する。
         public CelestialBody ActiveLocalBody; // ローカルビューでの中心天体
 
+        // 1 Unity Unit = 1,000 km = 1,000,000 m
+        public const float MapScale = 1e-6f;
+
         private void Awake()
         {
             if (Instance == null) Instance = this;
@@ -138,8 +141,9 @@ namespace SpaceLogistics.Space
             else if (body.ParentBody == ActiveLocalBody)
             {
                 // 親がActiveなので、GetLocalPositionで軌道位置を取得
+                // OrbitParametersはメートル単位で計算されるため、MapScaleを掛けてUnity単位に変換
                 Vector3 pos = body.GetLocalPosition(time);
-                body.transform.position = pos;
+                body.transform.position = pos * MapScale;
                 body.transform.localScale = Vector3.one * body.VisualScaleLocal;
                 body.SetSOIVisibility(true); // 衛星もSOIを表示
                 return true;

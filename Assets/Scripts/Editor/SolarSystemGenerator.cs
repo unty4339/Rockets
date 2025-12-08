@@ -19,30 +19,39 @@ namespace SpaceLogistics.Editor
                 massKg: 5.972e24, radiusKm: 6371, 
                 orbitAxis: 0, globalPos: new Vector3(-10, 0, 0), 
                 color: Color.blue);
+            earth.VisualScaleLocal = 4.0f; // Manually set good visual size
+            earth.LocalMapRadius = 50.0f;  // Expand map boundary
 
             // 2. Moon (Orbiting Earth)
-            CreateBody("Moon", earth.transform, 
+            // Distance: ~384,400 km = 384,400,000 meters
+            CelestialBody moon = CreateBody("Moon", earth.transform, 
                 massKg: 7.342e22, radiusKm: 1737, 
-                orbitAxis: 5, globalPos: Vector3.zero, // GlobalPos ignored for satellite
+                orbitAxis: 384400000.0, globalPos: Vector3.zero, 
                 color: Color.gray);
+            moon.VisualScaleLocal = 1.0f; 
 
             // 3. Mars
             CelestialBody mars = CreateBody("Mars", spaceContainer.transform, 
                 massKg: 6.39e23, radiusKm: 3389, 
                 orbitAxis: 0, globalPos: new Vector3(10, 0, 0), 
-                color: new Color(1f, 0.3f, 0f)); // Orange
+                color: new Color(1f, 0.3f, 0f)); 
+            mars.VisualScaleLocal = 2.1f; 
 
             // 4. Phobos (Orbiting Mars)
-            CreateBody("Phobos", mars.transform, 
+            // Distance: ~9,376 km = 9,376,000 meters
+            CelestialBody phobos = CreateBody("Phobos", mars.transform, 
                 massKg: 1.0659e16, radiusKm: 11, 
-                orbitAxis: 3, globalPos: Vector3.zero, 
+                orbitAxis: 9376000.0, globalPos: Vector3.zero, 
                 color: new Color(0.6f, 0.4f, 0.2f));
+            phobos.VisualScaleLocal = 0.2f;
 
             // 5. Deimos (Orbiting Mars)
-            CreateBody("Deimos", mars.transform, 
+            // Distance: ~23,463 km = 23,463,000 meters
+            CelestialBody deimos = CreateBody("Deimos", mars.transform, 
                 massKg: 1.4762e15, radiusKm: 6, 
-                orbitAxis: 6, globalPos: Vector3.zero, 
+                orbitAxis: 23463000.0, globalPos: Vector3.zero, 
                 color: new Color(0.5f, 0.3f, 0.1f));
+            deimos.VisualScaleLocal = 0.15f;
 
             Debug.Log("Solar System Generated: Earth, Moon, Mars, Phobos, Deimos");
             
@@ -56,7 +65,6 @@ namespace SpaceLogistics.Editor
             GameObject old = GameObject.Find(name);
             if (old != null)
             {
-                // 親が違う場合は移動
                 if (old.transform.parent != parent) old.transform.parent = parent;
             }
             
@@ -69,34 +77,29 @@ namespace SpaceLogistics.Editor
             // パラメータ設定
             body.BodyName = name;
             
-            // SerializeField経由で値を流し込む (CelestialBody.OnValidateを利用してMass等を更新)
+            // SerializeField更新
             SerializedObject so = new SerializedObject(body);
             so.FindProperty("_massKg").doubleValue = massKg;
             so.FindProperty("_radiusKm").doubleValue = radiusKm;
-            so.FindProperty("_soiRadiusKm").doubleValue = radiusKm * 10; // 簡易計算
+            so.FindProperty("_soiRadiusKm").doubleValue = 0; // Auto calculate
             so.ApplyModifiedProperties();
 
-            // 直接Structも設定（Runtime用）
+            // Runtime Init
             body.Mass = new Mass(massKg);
             body.Radius = Distance.FromKilometers(radiusKm);
-            body.SOIRadius = Distance.FromKilometers(radiusKm * 10);
             body.AbstractGlobalPosition = globalPos;
 
-            // 軌道設定
-            if (body.OrbitData == null) body.OrbitData = new OrbitParameters();
-            body.OrbitData.SemiMajorAxis = orbitAxis;
-            body.OrbitData.MeanMotion = 1.0; // 簡易速度
-            
             // 親設定
             CelestialBody parentBody = parent.GetComponent<CelestialBody>();
             body.ParentBody = parentBody;
+
+            // 軌道設定 (Physics Base)
+            SetOrbitFromPhysics(body, parentBody, orbitAxis);
 
             // Visuals
             SpriteRenderer sr = go.GetComponent<SpriteRenderer>();
             if (sr == null) sr = go.AddComponent<SpriteRenderer>();
             
-            // Sprite設定 (デフォルトのKnobがあれば使う、なければ白丸生成は面倒なので今は色だけ変える)
-            // エディタ標準のKnobスプライトを探す
             if (sr.sprite == null)
             {
                 sr.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
@@ -104,12 +107,37 @@ namespace SpaceLogistics.Editor
             sr.color = color;
             body.BodyRenderer = sr;
             
-            // スケール
-            body.VisualScaleLocal = (float)(radiusKm / 1000.0); // 表示サイズ調整
-            if (body.VisualScaleLocal < 0.5f) body.VisualScaleLocal = 0.5f;
-            body.VisualScaleGlobal = 2.0f; // GlobalMapでのアイコンサイズ
+            // Default Scale
+            body.VisualScaleLocal = 1.0f; // Default, overriden in main function
+            body.VisualScaleGlobal = 2.0f;
 
             return body;
+        }
+
+        private static void SetOrbitFromPhysics(CelestialBody body, CelestialBody parent, double orbitAxis)
+        {
+             if (body.OrbitData == null) body.OrbitData = new OrbitParameters();
+             body.OrbitData.SemiMajorAxis = orbitAxis;
+
+             if (parent != null)
+             {
+                 // n = sqrt(G * M / a^3)
+                 double M = parent.Mass.Kilograms;
+                 double a = orbitAxis;
+                 if (a > 0.001)
+                 {
+                     double n = System.Math.Sqrt(PhysicsConstants.GameGravitationalConstant * M / (a * a * a));
+                     body.OrbitData.MeanMotion = n;
+                 }
+                 else
+                 {
+                     body.OrbitData.MeanMotion = 0;
+                 }
+             }
+             else
+             {
+                 body.OrbitData.MeanMotion = 0; // Sun or orphaned
+             }
         }
     }
 }

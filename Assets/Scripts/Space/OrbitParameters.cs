@@ -24,14 +24,26 @@ namespace SpaceLogistics.Space
         /// <returns>計算されたローカル位置</returns>
         public UnityEngine.Vector3 CalculatePosition(double time)
         {
-            // 簡易計算: XZ平面（または2DならXY平面）上の円/楕円軌道とする
-            // 現状はMVPのため完全な円、または単純な楕円を想定
-            
+            // 1. Mean Anomaly Calculation
             double currentMeanAnomaly = MeanAnomalyAtEpoch + MeanMotion * time;
             
-            // 円軌道 (e=0) の場合:
-            double x = SemiMajorAxis * Math.Cos(currentMeanAnomaly);
-            double y = SemiMajorAxis * Math.Sin(currentMeanAnomaly);
+            // 2. Solve Kepler's Equation for Eccentric Anomaly (E)
+            // Use Rocketry.OrbitalMath
+            double E = Rocketry.OrbitalMath.SolveKepler(currentMeanAnomaly, Eccentricity);
+            
+            // 3. Calculate True Anomaly (nu)
+            double nu = Rocketry.OrbitalMath.EccentricToTrueAnomaly(E, Eccentricity);
+            
+            // 4. Calculate Radius (r)
+            // r = a * (1 - e^2) / (1 + e * cos(nu))
+            double r = SemiMajorAxis * (1.0 - Eccentricity * Eccentricity) / (1.0 + Eccentricity * Math.Cos(nu));
+            
+            // 5. Calculate position in orbital plane (assuming XY plane for 2D)
+            // Argument of Periapsis usually rotates the orbit
+            double angle = nu + ArgumentOfPeriapsis; 
+            
+            double x = r * Math.Cos(angle);
+            double y = r * Math.Sin(angle);
             
             return new UnityEngine.Vector3((float)x, (float)y, 0);
         }

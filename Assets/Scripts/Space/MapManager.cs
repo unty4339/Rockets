@@ -34,7 +34,14 @@ namespace SpaceLogistics.Space
             // 状態変更イベントの購読
             if (GameManager.Instance != null)
                 GameManager.Instance.OnStateChanged += HandleStateChanged;
-                
+            
+            // カメラ操作スクリプトの自動追加
+            if (MainCamera != null)
+            {
+                var camCtrl = MainCamera.GetComponent<UI.CameraControls>();
+                if (camCtrl == null) MainCamera.gameObject.AddComponent<UI.CameraControls>();
+            }
+
             // リストが空なら自動的に天体を検索する
             if (AllBodies.Count == 0)
             {
@@ -42,34 +49,46 @@ namespace SpaceLogistics.Space
             }
         }
 
-        private void OnDestroy()
-        {
-            if (GameManager.Instance != null)
-                GameManager.Instance.OnStateChanged -= HandleStateChanged;
-        }
+        // ...
 
-        private void Update()
-        {
-            if (TimeManager.Instance == null) return;
-            
-            RenderVisuals(TimeManager.Instance.UniverseTime);
-        }
-
-        /// <summary>
-        /// ゲーム状態の変更を処理する。
-        /// カメラのズーム設定などをモードに合わせてリセットする。
-        /// </summary>
-        /// <param name="newState">新しいゲーム状態</param>
         private void HandleStateChanged(GameState newState)
         {
             if (newState == GameState.LocalMap)
             {
-                if (MainCamera != null) MainCamera.orthographicSize = 10; // ローカル用のデフォルトズーム
+                // ローカルマップ: 自動フィット
+                FitCameraToActiveSystem();
             }
             else if (newState == GameState.GlobalMap)
             {
                 if (MainCamera != null) MainCamera.orthographicSize = 50; // グローバル用のデフォルトズーム
+                if (MainCamera != null) MainCamera.transform.position = new Vector3(0, 0, -10); // リセット
             }
+        }
+        
+        private void FitCameraToActiveSystem()
+        {
+            if (MainCamera == null || ActiveLocalBody == null) return;
+            
+            // 最大半径を探す
+            float maxDist = ActiveLocalBody.LocalMapRadius; // デフォルト（例 50）
+            
+            // 子衛星を探す
+            // Note: AllBodiesから検索する（階層構造がTransform通りとは限らないが、今回はTransformベースで探すか、OrbitDataで探す）
+            // OrbitDataを持っているものはParentBodyが設定されている
+            foreach (var body in AllBodies)
+            {
+                if (body.ParentBody == ActiveLocalBody)
+                {
+                    // 軌道半径 (m) * Scale
+                    float dist = (float)(body.OrbitData.SemiMajorAxis * MapScale);
+                    if (dist > maxDist) maxDist = dist;
+                }
+            }
+            
+            // 少し余裕を持たせる
+            float targetSize = maxDist * 1.2f;
+            MainCamera.orthographicSize = Mathf.Max(targetSize, 5f); // 最小5
+            MainCamera.transform.position = new Vector3(0, 0, -10); // 中心リセット
         }
 
         /// <summary>

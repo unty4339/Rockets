@@ -6,7 +6,7 @@ namespace SpaceLogistics.UI
     public class CameraControls : MonoBehaviour
     {
         [Header("Zoom Settings")]
-        public float ZoomSensitivity = 0.001f; // Scroll value is ~120 on windows
+        public float ZoomSensitivity = 0.1f; // Scroll value is ~120 on windows
         public float MinZoom = 1.0f;
         public float MaxZoom = 1000.0f;
 

@@ -7,14 +7,42 @@ namespace SpaceLogistics.Space
     /// ケプラー軌道要素に基づいて位置を計算する。
     /// </summary>
     [System.Serializable]
-    public class OrbitParameters
+    public class OrbitParameters : UnityEngine.ISerializationCallbackReceiver
     {
         public double SemiMajorAxis; // 軌道長半径 (a)
         public double Eccentricity;  // 離心率 (e)
-        public double Inclination;   // 軌道傾斜角 (i) - 2D簡略化では未使用だが拡張用
+        public double Inclination;   // 軌道傾斜角 (i)
         public double ArgumentOfPeriapsis; // 近点引数 (w)
         public double MeanAnomalyAtEpoch; // 元期における平均近点角 (M0)
         public double MeanMotion; // 平均運動 (n)
+
+        // Serialization Backing Fields
+        [UnityEngine.SerializeField, UnityEngine.HideInInspector] private string _semiMajorAxisS;
+        [UnityEngine.SerializeField, UnityEngine.HideInInspector] private string _eccentricityS;
+        [UnityEngine.SerializeField, UnityEngine.HideInInspector] private string _inclinationS;
+        [UnityEngine.SerializeField, UnityEngine.HideInInspector] private string _argPeriapsisS;
+        [UnityEngine.SerializeField, UnityEngine.HideInInspector] private string _meanAnomalyS;
+        [UnityEngine.SerializeField, UnityEngine.HideInInspector] private string _meanMotionS;
+
+        public void OnBeforeSerialize()
+        {
+            _semiMajorAxisS = SemiMajorAxis.ToString("G17", System.Globalization.CultureInfo.InvariantCulture);
+            _eccentricityS = Eccentricity.ToString("G17", System.Globalization.CultureInfo.InvariantCulture);
+            _inclinationS = Inclination.ToString("G17", System.Globalization.CultureInfo.InvariantCulture);
+            _argPeriapsisS = ArgumentOfPeriapsis.ToString("G17", System.Globalization.CultureInfo.InvariantCulture);
+            _meanAnomalyS = MeanAnomalyAtEpoch.ToString("G17", System.Globalization.CultureInfo.InvariantCulture);
+            _meanMotionS = MeanMotion.ToString("G17", System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        public void OnAfterDeserialize()
+        {
+            double.TryParse(_semiMajorAxisS, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out SemiMajorAxis);
+            double.TryParse(_eccentricityS, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out Eccentricity);
+            double.TryParse(_inclinationS, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out Inclination);
+            double.TryParse(_argPeriapsisS, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out ArgumentOfPeriapsis);
+            double.TryParse(_meanAnomalyS, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out MeanAnomalyAtEpoch);
+            double.TryParse(_meanMotionS, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out MeanMotion);
+        }
 
         /// <summary>
         /// 指定された時間における位置を計算する。
@@ -44,6 +72,8 @@ namespace SpaceLogistics.Space
             
             double x = r * Math.Cos(angle);
             double y = r * Math.Sin(angle);
+            
+            // Debug.Log($"Orbit: t={time:F2}, n={MeanMotion:E2}, r={r:E2}, ang={angle:F2}");
             
             return new UnityEngine.Vector3((float)x, (float)y, 0);
         }

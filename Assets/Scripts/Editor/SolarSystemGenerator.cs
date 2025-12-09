@@ -77,28 +77,15 @@ namespace SpaceLogistics.Editor
             // パラメータ設定
             body.BodyName = name;
             
-            // Runtime Init (Ensure instance exists for serialization)
+            // Runtime Init
             if (body.OrbitData == null) body.OrbitData = new OrbitParameters();
             
-            // SerializeField更新 (Persistent Data)
-            SerializedObject so = new SerializedObject(body);
-            so.Update(); // Fetch current values (including new OrbitData instance)
-
-            // Body Stats
-            so.FindProperty("_massKg").doubleValue = massKg;
-            so.FindProperty("_radiusKm").doubleValue = radiusKm;
-            so.FindProperty("_soiRadiusKm").doubleValue = 0; // Auto calculate
-            
             // Orbit Data (Physics Calculation)
+            body.OrbitData.SemiMajorAxis = orbitAxis;
+
             double M = 0;
             CelestialBody parentBody = parent.GetComponent<CelestialBody>();
-            if (parentBody != null) M = parentBody.Mass.Kilograms; // Note: parent might need its Mass initialized if it was just created? 
-            // Since we create in order (Earth then Moon), Earth's Mass property might theoretically be 0 if Awake hasn't run?
-            // Actually, we set Earth's SerializedProperty. But we also should set its Runtime property for immediate usage by next children.
-            
-            // Apply logic
-            SerializedProperty orbitProp = so.FindProperty("OrbitData");
-            orbitProp.FindPropertyRelative("SemiMajorAxis").doubleValue = orbitAxis;
+            if (parentBody != null) M = parentBody.Mass.Kilograms; // Accessing property reads from _massKg
 
             if (parentBody != null)
             {
@@ -106,31 +93,93 @@ namespace SpaceLogistics.Editor
                 if (a > 0.001)
                 {
                      double n = System.Math.Sqrt(PhysicsConstants.GameGravitationalConstant * M / (a * a * a));
-                     orbitProp.FindPropertyRelative("MeanMotion").doubleValue = n;
+                     body.OrbitData.MeanMotion = n;
                 }
                 else
                 {
-                     orbitProp.FindPropertyRelative("MeanMotion").doubleValue = 0;
+                     body.OrbitData.MeanMotion = 0;
                 }
             }
             else
             {
-                 orbitProp.FindPropertyRelative("MeanMotion").doubleValue = 0;
+                 body.OrbitData.MeanMotion = 0;
             }
 
-            so.ApplyModifiedProperties();
-
-            // Runtime Init for immediate use (e.g. by subsequent CreateBody calls relying on Mass)
+            // Body Stats
+            // Setting properties updates the backing private fields in CelestialBody
             body.Mass = new Mass(massKg);
             body.Radius = Distance.FromKilometers(radiusKm);
-            body.AbstractGlobalPosition = globalPos;
+            body.SOIRadius = new Distance(0); // This should trigger auto calc logic if property has logic, or we set field?
+            // CelestialBody SOIRadius propery logic?
+            // public Distance SOIRadius; <- This is a field in the class, not a property wrapper for _soiRadiusKm!
+            // Wait, looking at CelestialBody.cs viewed earlier:
+            // public Mass Mass; 
+            // [SerializeField] private double _massKg;
+            // Awake/OnValidate syncs them.
+            // BUT setters? 
+            // No setters defined in the snippet I saw?
+            // Let's check CelestialBody.cs content I saw in Step 624.
+            // Lines 71-76 Awake sets Mass = new Mass(_massKg).
+            // Lines 80-84 OnValidate sets Mass = new Mass(_massKg).
+            // It does NOT show properties connecting Mass -> _massKg.
+            // It shows `public Mass Mass;` which is a field of type struct Mass.
+            // struct Mass might just be a wrapper.
+            // If I set `body.Mass = ...` in Editor script, I am setting the struct field.
+            // I am NOT setting `_massKg`.
+            // When serialization happens, Unity serializes `_massKg`.
+            // It might NOT serialize `public Mass Mass` if Mass is not serializable or if custom inspector/logic ignores it.
+            // actually `Mass` struct in PhysicsTypes is likely `[Serializable]`.
+            // But `CelestialBody` has explicit `_massKg`.
+            // The intention seems to be `_massKg` is the source of truth for Inspector.
+            // So I MUST set `_massKg` via Reflection or modify CelestialBody to have properties.
             
-            // 親設定
+            // To be safe and clean, I should SET the serialized fields (via SerializedObject) OR update CelestialBody to have proper properties.
+            // Given I cannot easily verify if Mass struct is serializable (it probably is), 
+            // BUT `CelestialBody` relies on `_massKg` in Awake.
+            // So I NEED to set `_massKg`.
+            
+            // However, OrbitParameters IS the issue right now.
+            // OrbitParameters is a class instance `body.OrbitData`.
+            // I setting `body.OrbitData.SemiMajorAxis = ...` updates memory.
+            // `OnBeforeSerialize` takes that and puts it in string.
+            // This works for OrbitData.
+            
+            // For Mass/Radius, I should likely stick to SerializedObject OR set the private fields via reflection?
+            // Or just use SerializedObject for Mass/Radius and C# for OrbitData.
+            // Hybrid approach.
+            
+            SerializedObject so = new SerializedObject(body);
+            so.Update();
+            so.FindProperty("_massKg").doubleValue = massKg;
+            so.FindProperty("_radiusKm").doubleValue = radiusKm;
+            so.FindProperty("_soiRadiusKm").doubleValue = 0;
+            so.ApplyModifiedProperties();
+            
+            // Parent Body
             body.ParentBody = parentBody;
             
-            // Visuals
-            SpriteRenderer sr = go.GetComponent<SpriteRenderer>();
-            if (sr == null) sr = go.AddComponent<SpriteRenderer>();
+            // Abstract Global Position
+            body.AbstractGlobalPosition = globalPos;
+
+            // Visuals (Separate GameObject to avoid Scale Inheritance issues)
+            Transform visualT = go.transform.Find("Visuals");
+            GameObject visualGO;
+            if (visualT != null)
+            {
+                visualGO = visualT.gameObject;
+            }
+            else
+            {
+                visualGO = new GameObject("Visuals");
+                visualGO.transform.SetParent(go.transform);
+                visualGO.transform.localPosition = Vector3.zero;
+                visualGO.transform.localRotation = Quaternion.identity;
+            }
+            // Ensure Logic Body Scale is 1
+            go.transform.localScale = Vector3.one;
+
+            SpriteRenderer sr = visualGO.GetComponent<SpriteRenderer>();
+            if (sr == null) sr = visualGO.AddComponent<SpriteRenderer>();
             
             if (sr.sprite == null)
             {
@@ -139,20 +188,15 @@ namespace SpaceLogistics.Editor
             sr.color = color;
             body.BodyRenderer = sr;
             
-            // Default Scale (Overridden by caller immediately after, but caller sets property directly. 
-            // VisualScaleLocal is float, likely standard serialization handles it. 
-            // Caller should also set it via SerializedObject or we assume float fields work fine?)
-            // Floats on Monobehaviour usually work fine if public. 
-            // But strict correctness suggests caller should just set body.VisualScaleLocal.
-            // body.VisualScaleLocal is public field. Unity serializes it.
-            // But we must mark dirty if we set it directly. 
-            // Since CreateBody returns body, and caller sets fields, caller should set dirty or we do it here.
-            
-            // Let's set defaults here
+            // Default Scale
             body.VisualScaleLocal = 1.0f;
             body.VisualScaleGlobal = 2.0f;
             
-            EditorUtility.SetDirty(body); // Ensure public field changes and SO changes trigger save
+            EditorUtility.SetDirty(body); 
+
+            // Initialize Transform Position for Scene View (Editor)
+            float initialDist = (float)(orbitAxis * SpaceLogistics.Space.MapManager.MapScale);
+            body.transform.localPosition = new Vector3(initialDist, 0, 0);
 
             return body;
         }

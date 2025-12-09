@@ -7,9 +7,13 @@ namespace SpaceLogistics.Core
     /// ゲーム内の時間進行を管理するクラス。
     /// タイムスケールの変更や、宇宙時間（UniverseTime）の更新を行う。
     /// </summary>
-    public class TimeManager : MonoBehaviour
+    /// <summary>
+    /// ゲーム内の時間進行を管理するクラス。
+    /// タイムスケールの変更や、宇宙時間（UniverseTime）の更新を行う。
+    /// </summary>
+    public class TimeManager : SingletonMonoBehaviour<TimeManager>
     {
-        public static TimeManager Instance { get; private set; }
+        // Instance property inherited
 
         [Header("Time Settings")]
         [SerializeField] private float initialTimeScale = 1.0f;
@@ -29,18 +33,11 @@ namespace SpaceLogistics.Core
         /// </summary>
         public event Action<float> OnTick;
 
-        private void Awake()
+        protected override void Awake()
         {
-            if (Instance == null)
-            {
-                Instance = this;
-                DontDestroyOnLoad(gameObject);
-            }
-            else
-            {
-                Destroy(gameObject);
-            }
-            
+            base.Awake();
+            if (Instance != this) return;
+
             TimeScale = initialTimeScale;
         }
 
@@ -50,6 +47,11 @@ namespace SpaceLogistics.Core
             UniverseTime += dt;
             
             OnTick?.Invoke(dt);
+
+            if (Time.frameCount % 200 == 0 && TimeScale > 0)
+            {
+                Debug.Log($"[TimeManager] UniverseTime={UniverseTime:F1}, Scale={TimeScale}");
+            }
         }
 
         /// <summary>

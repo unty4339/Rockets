@@ -5,13 +5,28 @@ using SpaceLogistics.Space;
 namespace SpaceLogistics.Missions
 {
     [System.Serializable]
-    public class MissionData
+    public class MissionData : ISerializationCallbackReceiver
     {
         public string OriginBodyName;
         public string DestinationBodyName;
         public double StartTime;
         public double EndTime;
         public bool IsGlobalMission;
+
+        [SerializeField, HideInInspector] private string _startTimeS;
+        [SerializeField, HideInInspector] private string _endTimeS;
+
+        public void OnBeforeSerialize()
+        {
+            _startTimeS = StartTime.ToString("G17", System.Globalization.CultureInfo.InvariantCulture);
+            _endTimeS = EndTime.ToString("G17", System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        public void OnAfterDeserialize()
+        {
+            double.TryParse(_startTimeS, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out StartTime);
+            double.TryParse(_endTimeS, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out EndTime);
+        }
 
         // Constructor
         public MissionData(string origin, string dest, double start, double end, bool isGlobal)

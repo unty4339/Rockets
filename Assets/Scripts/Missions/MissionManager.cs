@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using SpaceLogistics.Rocketry;
+using SpaceLogistics.Core;
 
 namespace SpaceLogistics.Missions
 {
@@ -8,18 +9,14 @@ namespace SpaceLogistics.Missions
     /// ミッションの管理を行うクラス。
     /// ルートとロケットの適合性検証や、アクティブなロケットの追跡を行う。
     /// </summary>
-    public class MissionManager : MonoBehaviour
+    public class MissionManager : SingletonMonoBehaviour<MissionManager>
     {
-        public static MissionManager Instance { get; private set; }
+        // Instance inherited from SingletonMonoBehaviour
 
         public List<ActiveRocket> OngoingMissions = new List<ActiveRocket>();
         public GameObject RocketPrefab; // ActiveRocket生成用プレハブ
 
-        private void Awake()
-        {
-            if (Instance == null) Instance = this;
-            else Destroy(gameObject);
-        }
+        // Awake logic handled by SingletonMonoBehaviour
 
         /// <summary>
         /// ミッションが実行可能か検証する。

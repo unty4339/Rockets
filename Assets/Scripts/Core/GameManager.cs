@@ -15,12 +15,13 @@ namespace SpaceLogistics.Core
     /// ゲーム全体の進行と状態を管理するシングルトンクラス。
     /// マップ切り替えやゲームモードの遷移を制御する。
     /// </summary>
-    public class GameManager : MonoBehaviour
+    /// <summary>
+    /// ゲーム全体の進行と状態を管理するシングルトンクラス。
+    /// マップ切り替えやゲームモードの遷移を制御する。
+    /// </summary>
+    public class GameManager : SingletonMonoBehaviour<GameManager>
     {
-        /// <summary>
-        /// GameManagerの唯一のインスタンス。
-        /// </summary>
-        public static GameManager Instance { get; private set; }
+        // Instance property is inherited
 
         /// <summary>
         /// 現在のゲーム状態。
@@ -32,18 +33,7 @@ namespace SpaceLogistics.Core
         /// </summary>
         public event Action<GameState> OnStateChanged;
 
-        private void Awake()
-        {
-            if (Instance == null)
-            {
-                Instance = this;
-                DontDestroyOnLoad(gameObject);
-            }
-            else
-            {
-                Destroy(gameObject);
-            }
-        }
+        // Awake removed as base handles logic
 
         /// <summary>
         /// ゲーム状態を指定された新しい状態に変更する。

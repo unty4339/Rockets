@@ -8,9 +8,13 @@ namespace SpaceLogistics.Space
     /// マップの表示モード（ローカル/グローバル）と天体の描画を管理するクラス。
     /// 現在のモードに応じてカメラ設定や天体の位置/スケールを更新する。
     /// </summary>
-    public class MapManager : MonoBehaviour
+    /// <summary>
+    /// マップの表示モード（ローカル/グローバル）と天体の描画を管理するクラス。
+    /// 現在のモードに応じてカメラ設定や天体の位置/スケールを更新する。
+    /// </summary>
+    public class MapManager : SingletonMonoBehaviour<MapManager>
     {
-        public static MapManager Instance { get; private set; }
+        // Instance property inherited
 
         [Header("References")]
         public Camera MainCamera;
@@ -23,11 +27,7 @@ namespace SpaceLogistics.Space
         // 1 Unity Unit = 1,000 km = 1,000,000 m
         public const float MapScale = 1e-6f;
 
-        private void Awake()
-        {
-            if (Instance == null) Instance = this;
-            else Destroy(gameObject);
-        }
+        // Awake removed as base handles logic
 
         private void Start()
         {
@@ -50,6 +50,14 @@ namespace SpaceLogistics.Space
         }
 
         // ...
+
+        private void Update()
+        {
+            if (TimeManager.Instance != null)
+            {
+                RenderVisuals(TimeManager.Instance.UniverseTime);
+            }
+        }
 
         private void HandleStateChanged(GameState newState)
         {
@@ -153,7 +161,11 @@ namespace SpaceLogistics.Space
             if (body == ActiveLocalBody)
             {
                 body.transform.position = Vector3.zero; // 中心不動
-                body.transform.localScale = Vector3.one * body.VisualScaleLocal;
+                body.transform.localScale = Vector3.one;
+                if (body.BodyRenderer != null)
+                {
+                    body.BodyRenderer.transform.localScale = Vector3.one * body.VisualScaleLocal;
+                }
                 body.SetSOIVisibility(true); // 中心天体はSOIを表示
                 return true;
             }
@@ -163,8 +175,20 @@ namespace SpaceLogistics.Space
                 // OrbitParametersはメートル単位で計算されるため、MapScaleを掛けてUnity単位に変換
                 Vector3 pos = body.GetLocalPosition(time);
                 body.transform.position = pos * MapScale;
-                body.transform.localScale = Vector3.one * body.VisualScaleLocal;
+                
+                body.transform.localScale = Vector3.one;
+                if (body.BodyRenderer != null)
+                {
+                    body.BodyRenderer.transform.localScale = Vector3.one * body.VisualScaleLocal;
+                }
+                
                 body.SetSOIVisibility(true); // 衛星もSOIを表示
+                
+                if (Time.frameCount % 200 == 0)
+                {
+                    Debug.Log($"[MapManager] {body.BodyName}: Time={time:F1}, PosMeters={pos}, n={body.OrbitData.MeanMotion:E2}, ScaledPos={body.transform.position}");
+                }
+                
                 return true;
             }
             
@@ -190,7 +214,11 @@ namespace SpaceLogistics.Space
             if (isMajor)
             {
                 body.transform.position = body.GetGlobalPosition(time);
-                body.transform.localScale = Vector3.one * body.VisualScaleGlobal;
+                body.transform.localScale = Vector3.one;
+                if (body.BodyRenderer != null)
+                {
+                    body.BodyRenderer.transform.localScale = Vector3.one * body.VisualScaleGlobal;
+                }
                 return true;
             }
             

@@ -117,9 +117,14 @@ namespace SpaceLogistics.Space
             double vx_rot = vx_peri * Math.Cos(w) - vy_peri * Math.Sin(w);
             double vy_rot = vx_peri * Math.Sin(w) + vy_peri * Math.Cos(w);
 
-            Vector3 vel = new Vector3((float)vx_rot, (float)vy_rot, 0);
+            Vector3 posMeters = new Vector3((float)pos.x, (float)pos.y, 0);
+            Vector3 velMeters = new Vector3((float)vx_rot, (float)vy_rot, 0);
 
-            return new OrbitalState(pos, vel, time);
+            // Unity Unitsに変換 (MapScaleを適用)
+            // MapManagerへの依存が生じるが、表示用クラスとしては許容
+            float scale = SpaceLogistics.Space.MapManager.MapScale;
+            
+            return new OrbitalState(posMeters * scale, velMeters * scale, time);
         }
 
         public Vector3[] GetPathPoints(int resolution)

@@ -142,15 +142,6 @@ namespace SpaceLogistics.Space
 
                 if (body.BodyRenderer != null) body.BodyRenderer.enabled = isVisible;
             }
-            
-            // カメラ追従は不要（中心固定のため、カメラも(0,0,-10)固定でOKだが、ズーム操作は残す）
-            if (state == GameState.LocalMap && MainCamera != null)
-            {
-                // 常に原点を見る
-                Vector3 targetPos = Vector3.zero; 
-                targetPos.z = -10;
-                MainCamera.transform.position = targetPos;
-            }
         }
 
         private bool UpdateLocalMap(CelestialBody body, double time)

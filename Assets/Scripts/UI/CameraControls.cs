@@ -12,6 +12,7 @@ namespace SpaceLogistics.UI
 
         [Header("Pan Settings")]
         public float PanSensitivity = 1.0f;
+        public float MoveSpeed = 5.0f;
 
         private Camera _cam;
         private Vector3 _dragOrigin;
@@ -32,6 +33,7 @@ namespace SpaceLogistics.UI
 
             HandleZoom();
             HandlePan();
+            HandleKeyboardMovement();
         }
 
         private void HandleZoom()
@@ -44,6 +46,24 @@ namespace SpaceLogistics.UI
                     float targetSize = _cam.orthographicSize - scroll * ZoomSensitivity * _cam.orthographicSize;
                     _cam.orthographicSize = Mathf.Clamp(targetSize, MinZoom, MaxZoom);
                 }
+            }
+        }
+
+        private void HandleKeyboardMovement()
+        {
+            if (Keyboard.current == null) return;
+
+            Vector3 move = Vector3.zero;
+            if (Keyboard.current.wKey.isPressed) move.y += 1;
+            if (Keyboard.current.sKey.isPressed) move.y -= 1;
+            if (Keyboard.current.aKey.isPressed) move.x -= 1;
+            if (Keyboard.current.dKey.isPressed) move.x += 1;
+
+            if (move != Vector3.zero)
+            {
+                // ズームレベルに応じて速度を調整
+                float speed = MoveSpeed * _cam.orthographicSize * Time.deltaTime;
+                transform.position += move.normalized * speed;
             }
         }
 

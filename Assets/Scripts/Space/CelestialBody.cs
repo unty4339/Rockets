@@ -28,8 +28,7 @@ namespace SpaceLogistics.Space
 
         [Header("Visuals")]
         public SpriteRenderer BodyRenderer;
-        public float VisualScaleLocal = 1.0f;
-        public float VisualScaleGlobal = 1.0f; // GlobalViewLogScaleが1.0になったのでこちらも調整
+
         
         // SOIの見た目上の半径 (Local Map)
         public float VisualSOIRadius
@@ -38,19 +37,19 @@ namespace SpaceLogistics.Space
             {
                 // 物理計算ベース
                 // r = a * (m/M)^(2/5)
-                if (ParentBody == null) return VisualScaleLocal * 10f; // 親がいない場合は適当
+                // Fallback based on physical radius (meters) converted to scaled units, multiplied by factor
+                if (ParentBody == null) return (float)(Radius.Meters * MapManager.MapScale * 10.0); 
 
                 double m = Mass.Kilograms;
                 double M = ParentBody.Mass.Kilograms;
-                if (M <= 0) return VisualScaleLocal * 3.0f; // Avoid div 0
+                if (M <= 0) return (float)(Radius.Meters * MapManager.MapScale * 3.0); 
 
                 // 軌道長半径 (Local Map上の距離)
-                // OrbitData.SemiMajorAxis はVisual単位とする
                 double a = OrbitData.SemiMajorAxis;
                 if (a <= 0) 
                 {
                      // 中心天体の場合
-                     return VisualScaleLocal * 5.0f;
+                     return (float)(Radius.Meters * MapManager.MapScale * 5.0);
                 }
 
                 double ratio = m / M;
@@ -88,7 +87,7 @@ namespace SpaceLogistics.Space
             if (BodyRenderer == null)
                 BodyRenderer = GetComponentInChildren<SpriteRenderer>();
 
-            UpdateVisualScale();
+
 
             // SOI表示用LineRendererのセットアップ
             _soiLineRenderer = GetComponent<LineRenderer>();
@@ -99,10 +98,7 @@ namespace SpaceLogistics.Space
             SetupSOIVisual();
         }
         
-        private void UpdateVisualScale()
-        {
-            // 必要に応じてスケール更新ロジック
-        }
+
 
         /// <summary>
         /// この天体が属する惑星系のルート天体（ローカルマップの中心）を取得する。
@@ -133,7 +129,8 @@ namespace SpaceLogistics.Space
             float r = VisualSOIRadius;
             
             // 安全策: 小さすぎると見えないのでMinキャップ
-            if (r < VisualScaleLocal * 1.2f) r = VisualScaleLocal * 1.5f;
+            float bodyRadiusUnit = (float)(Radius.Meters * MapManager.MapScale);
+            if (r < bodyRadiusUnit * 4.0f) r = bodyRadiusUnit * 5.0f;
 
             for (int i = 0; i < 50; i++)
             {

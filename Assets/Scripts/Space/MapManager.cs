@@ -25,7 +25,7 @@ namespace SpaceLogistics.Space
         public CelestialBody ActiveLocalBody; // ローカルビューでの中心天体
 
         // 1 Unity Unit = 1,000 km = 1,000,000 m
-        public const float MapScale = 1e-6f;
+        public const float MapScale = 1e-7f;
         public const float PhysicsScale = 1.0f; // 物理計算はメートル単位 (1.0)
 
         // Awake removed as base handles logic
@@ -165,7 +165,9 @@ namespace SpaceLogistics.Space
                 body.transform.localScale = Vector3.one;
                 if (body.BodyRenderer != null)
                 {
-                    body.BodyRenderer.transform.localScale = Vector3.one * body.VisualScaleLocal;
+                // Sprite normalization: Assumed ~1 unit size for sprite default
+                float diameter = (float)(body.Radius.Meters * MapScale * 2.0);
+                body.BodyRenderer.transform.localScale = Vector3.one * diameter;
                 }
                 body.SetSOIVisibility(true); // 中心天体はSOIを表示
                 return true;
@@ -180,7 +182,8 @@ namespace SpaceLogistics.Space
                 body.transform.localScale = Vector3.one;
                 if (body.BodyRenderer != null)
                 {
-                    body.BodyRenderer.transform.localScale = Vector3.one * body.VisualScaleLocal;
+                float diameter = (float)(body.Radius.Meters * MapScale * 2.0);
+                body.BodyRenderer.transform.localScale = Vector3.one * diameter;
                 }
                 
                 body.SetSOIVisibility(true); // 衛星もSOIを表示
@@ -218,7 +221,7 @@ namespace SpaceLogistics.Space
                 body.transform.localScale = Vector3.one;
                 if (body.BodyRenderer != null)
                 {
-                    body.BodyRenderer.transform.localScale = Vector3.one * body.VisualScaleGlobal;
+                    body.BodyRenderer.transform.localScale = Vector3.one * 5.0f; // Fixed icon size for global map
                 }
                 return true;
             }

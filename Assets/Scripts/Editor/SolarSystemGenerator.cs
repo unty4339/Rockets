@@ -19,7 +19,6 @@ namespace SpaceLogistics.Editor
                 massKg: 5.972e24, radiusKm: 6371, 
                 orbitAxis: 0, globalPos: new Vector3(-10, 0, 0), 
                 color: Color.blue);
-            earth.VisualScaleLocal = 40.0f; // Increased for visibility at MapScale 1e-6
             earth.LocalMapRadius = 50.0f;  
 
             // 2. Moon (Orbiting Earth)
@@ -28,30 +27,28 @@ namespace SpaceLogistics.Editor
                 massKg: 7.342e22, radiusKm: 1737, 
                 orbitAxis: 384400000.0, globalPos: Vector3.zero, 
                 color: Color.gray);
-            moon.VisualScaleLocal = 10.0f; 
+ 
 
             // 3. Mars
             CelestialBody mars = CreateBody("Mars", spaceContainer.transform, 
                 massKg: 6.39e23, radiusKm: 3389, 
                 orbitAxis: 0, globalPos: new Vector3(10, 0, 0), 
                 color: new Color(1f, 0.3f, 0f)); 
-            mars.VisualScaleLocal = 20.0f; 
+ 
 
             // 4. Phobos (Orbiting Mars)
             // Distance: ~9,376 km = 9,376,000 meters
             CelestialBody phobos = CreateBody("Phobos", mars.transform, 
-                massKg: 1.0659e16, radiusKm: 11, 
+                massKg: 1.0659e16, radiusKm: 1000,  
                 orbitAxis: 9376000.0, globalPos: Vector3.zero, 
                 color: new Color(0.6f, 0.4f, 0.2f));
-            phobos.VisualScaleLocal = 2.0f;
 
             // 5. Deimos (Orbiting Mars)
             // Distance: ~23,463 km = 23,463,000 meters
             CelestialBody deimos = CreateBody("Deimos", mars.transform, 
-                massKg: 1.4762e15, radiusKm: 6, 
+                massKg: 1.4762e15, radiusKm: 600, 
                 orbitAxis: 23463000.0, globalPos: Vector3.zero, 
                 color: new Color(0.5f, 0.3f, 0.1f));
-            deimos.VisualScaleLocal = 1.5f;
 
             Debug.Log("Solar System Generated: Earth, Moon, Mars, Phobos, Deimos");
             
@@ -188,9 +185,7 @@ namespace SpaceLogistics.Editor
             sr.color = color;
             body.BodyRenderer = sr;
             
-            // Default Scale
-            body.VisualScaleLocal = 1.0f;
-            body.VisualScaleGlobal = 2.0f;
+
             
             EditorUtility.SetDirty(body); 
 

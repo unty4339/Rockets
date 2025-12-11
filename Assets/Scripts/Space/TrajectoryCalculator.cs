@@ -17,7 +17,7 @@ namespace SpaceLogistics.Space
         /// <summary>
         /// 単純な円軌道間のホーマン遷移を計算する。
         /// </summary>
-        public static TransferResult CalculateHohmannTransfer(CelestialBody origin, double r1, double r2, double startTime)
+        public static TransferResult CalculateHohmannTransfer(CelestialBody origin, double r1, double r2, double startTime, double argumentOfPeriapsis = 0.0)
         {
             // μ = GM
             double mu = PhysicsConstants.GameGravitationalConstant * origin.Mass.Kilograms;
@@ -45,7 +45,7 @@ namespace SpaceLogistics.Space
                 SemiMajorAxis = a_trans,
                 Eccentricity = Math.Abs(r2 - r1) / (r1 + r2),
                 Inclination = 0.0,
-                ArgumentOfPeriapsis = 0.0,
+                ArgumentOfPeriapsis = argumentOfPeriapsis,
                 LongitudeOfAscendingNode = 0.0,
                 MeanMotion = Math.Sqrt(mu / Math.Pow(a_trans, 3)),
                 MeanAnomalyAtEpoch = 0.0 // Default 0

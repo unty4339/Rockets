@@ -113,8 +113,6 @@ namespace SpaceLogistics.Missions
                 
                 // ReferenceBodyがSystemRootでない場合（例：月）、
                 // ReferenceBody自体のLocalPositionも加算する必要がある。
-                // GlobalMapでは「恒星間」が見えるレベルなので、System内の細かい動きは見えなくて良いかもしれないが、
-                // 一応計算する。
                 
                 Vector3 refBodyOffset = Vector3.zero;
                 if (referenceBody != systemRoot)
@@ -123,10 +121,17 @@ namespace SpaceLogistics.Missions
                 }
 
                 // 全てをGlobalScaleで合成
-                // GlobalViewLogScale は MapManager で管理されている
+                // rootGlobalPos: Unity Unit (Global Coord)
+                // refBodyOffset, state.Position: Meters
+                
                 float gScale = MapManager.Instance.GlobalViewLogScale;
                 
-                finalPosition = (rootGlobalPos + refBodyOffset + state.Position) * gScale; 
+                // メートルをMapScaleでUnitに変換してから、Global位置計算に加える
+                // 注: Global Mapの縮尺とLocal Mapの縮尺(MapScale)が一致している保証はないが、
+                // ここでは「星系内部の相対位置」を表示するためにMapScaleを使用する。
+                Vector3 localPosUnit = (refBodyOffset + state.Position) * MapManager.MapScale;
+                
+                finalPosition = rootGlobalPos + localPosUnit * gScale; 
                 
                 // Global Mapでは、アイコンを少し大きくしたりする処理が必要かも
             }
@@ -137,19 +142,21 @@ namespace SpaceLogistics.Missions
                 if (activeCamBody == referenceBody)
                 {
                     // ケース1: カメラ基準天体 = ロケット基準天体 (例: 地球を見ていて、ロケットも地球周回)
-                    finalPosition = state.Position;
+                    finalPosition = state.Position * MapManager.MapScale;
                 }
                 else if (referenceBody.ParentBody == activeCamBody)
                 {
                     // ケース2: ロケットは衛星(月)基準だが、カメラは親(地球)を見ている
                     // ロケット位置 = 月の位置(Active基準) + ロケット相対位置
-                    finalPosition = referenceBody.GetLocalPosition(time) + state.Position;
+                    // GetLocalPosition returns Meters, state.Position is Meters.
+                    // Convert total to Unity Units.
+                    finalPosition = (referenceBody.GetLocalPosition(time) + state.Position) * MapManager.MapScale;
                 }
                 else if (activeCamBody.ParentBody == referenceBody)
                 {
                     // ケース3: ロケットは親(地球)基準だが、カメラは衛星(月)を見ている
                     // ロケット位置(Active基準) = ロケット位置(Ref基準) - カメラ中心位置(Ref基準)
-                    finalPosition = state.Position - activeCamBody.GetLocalPosition(time);
+                    finalPosition = (state.Position - activeCamBody.GetLocalPosition(time)) * MapManager.MapScale;
                 }
                 else
                 {

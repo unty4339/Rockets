@@ -6,15 +6,27 @@ namespace SpaceLogistics.Space
     public class TrajectorySegment
     {
         public ITrajectory Trajectory;
-        // public Maneuver StartManeuver; // 将来的にマニューバ情報を追加
-        
-        public double StartTime => Trajectory.StartTime;
-        public double EndTime => Trajectory.EndTime;
-        public double Duration => EndTime - StartTime;
+        public double StartTime;
+        public double EndTime;
 
         public TrajectorySegment(ITrajectory trajectory)
         {
             Trajectory = trajectory;
+            // ITrajectoryから時間を取得
+            StartTime = trajectory.StartTime;
+            EndTime = trajectory.EndTime;
+        }
+
+        public TrajectorySegment(ITrajectory trajectory, double start, double end)
+        {
+            Trajectory = trajectory;
+            StartTime = start;
+            EndTime = end;
+        }
+
+        public OrbitalState Evaluate(double time)
+        {
+            return Trajectory.Evaluate(time);
         }
     }
 }

@@ -8,108 +8,101 @@ namespace SpaceLogistics.Missions
     public static class MissionBuilder
     {
         /// <summary>
-        /// 地球から月への飛行計画を作成する。
+        /// 親子関係にある天体間（例：地球 -> 月）の飛行計画を作成する。
         /// </summary>
-        public static FlightPlan CreateEarthToMoonPlan(CelestialBody origin, CelestialBody destination, double startTime)
+        public static FlightPlan CreateEarthToMoonPlan(CelestialBody origin, CelestialBody destination, double requestTime)
         {
             FlightPlan plan = new FlightPlan();
 
+            // 物理定数
+            // MapManager.MapScale等は表示の話なので、計算は全てPhysicsConstantsとメートルで行う。
+            
             // 1. Parking Orbit (Low Earth Orbit)
-            // 高度200km相当 (Game Scaleに合わせる)
-            double r_park = origin.Radius.ToMeters() * 1.2;
-            if (r_park < origin.Radius.ToMeters() + 10000) r_park = origin.Radius.ToMeters() + 500000; // Minimum altitude
+            // 高度: 地表から一定距離 (例: 200km -> 200,000m)
+            // origin.Radius は Unity Unit なのか Meters なのか？
+            // CelestialBody の定義を確認すると、恐らく Unit。
+            // しかし MapManager.PhysicsScale が導入されたので、Radius * (1e6) くらいか？
+            // CelestialBody.Radiusプロパティがどうなっているか怪しいが、ToMeters() メソッドがあるようだ（以前のコード参照）。
+            // ToMeters() がない場合は、MapManager.OrbitDataScale (1000km/unit) を使う。
             
-            // MapScale変換は行わず、メートル単位で計算する
-            double r1_meters = r_park;
+            double r_origin = origin.Radius.ToMeters(); 
+            double r_park = r_origin + 200000.0; // +200km altitude
+            
+            // 2. Transfer Calculation (Provisional to get duration)
+            // ターゲット軌道半径
+            double r_dest = destination.OrbitData.SemiMajorAxis; // Unity Unit (Parent Relative)
+            // OrbitData.SemiMajorAxis は恐らく Unity Unit (MapScale適用後) だが、
+            // MapManagerのコメント「OrbitParametersはメートル単位で計算される」とある。
+            // CelestialBody.OrbitDataの中身がメートルならそのままでよい。
+            // 前回のMapManagerのDiffで「OrbitData.SemiMajorAxis * MapScale」としていたので、
+            // OrbitData.SemiMajorAxis は「メートル」である可能性が高い。
+            // 素のOrbitDataはメートル。
+            
+            double r1 = r_park;
+            double r2 = destination.OrbitData.SemiMajorAxis; // Meters
 
-            // 月の軌道半径 (平均)
-            // destination.OrbitData.SemiMajorAxis は Unity Unit (MapScale適用済み)
-            // 計算のためにメートルに戻す
-            double mapScale = MapManager.MapScale;
-            double r2_meters = destination.OrbitData.SemiMajorAxis / mapScale;
-            
-            // 2. Trans-Lunar Injection (TLI) Calculation
-            // ホーマン遷移計算 (メートル単位)
-            var transferResult = TrajectoryCalculator.CalculateHohmannTransfer(origin, r1_meters, r2_meters, startTime);
-            KeplerOrbit transferOrbit = transferResult.orbit;
-            double transferDuration = transferResult.duration;
+            // 仮の転移計算（所要時間を知るため）
+            var tempTransfer = TrajectoryCalculator.CalculateHohmannTransfer(origin, r1, r2, requestTime);
+            double transferDuration = tempTransfer.duration;
 
-            double t_launch = startTime; // 即時打ち上げと仮定 (Launch Window待ちはPhase 0として追加可能だが簡略化)
-            double t_intercept = t_launch + transferDuration;
+            // 3. Launch Window Calculation
+            // 最適な発射時刻を計算
+            double launchTime = TrajectoryCalculator.FindNextLaunchWindow(origin, destination, transferDuration, requestTime);
+            
+            // もし launchTime が requestTime より過去なら（周期的なのであり得ないはずだが）、未来へ。
+            if (launchTime < requestTime) launchTime += destination.OrbitData.Period;
 
-            // Phase 1: LEO (Parking)
-            // TLIまで待機 (ここでは0時間待機とし、即TLIへ)
-            // 実際はLaunch Windowに合わせる必要があるが、MVPでは省略。
-            
-            // Phase 2: Transfer (Earth to Moon SOI)
-            // 月のSOIに入るまでの時間を計算すべきだが、まずは全行程の90%くらいまでをTransferとする
-            double t_soi_entry = t_launch + transferDuration * 0.9; 
-            
-            // Transfer Orbitの前半部分を登録
-            // EndTimeをSOI Entryに書き換えたコピーを作るべきだが、ITrajectoryはReadonlyっぽいので
-            // Segment側で時間を区切るのが正しい設計。でもSegmentはTrajectoryのEndを使う。
-            // KeplerOrbitを再生成する。
-            KeplerOrbit earthToMoon = new KeplerOrbit(origin, transferOrbit.Parameters, t_launch, t_soi_entry);
-            plan.AddSegment(new TrajectorySegment(earthToMoon));
+            // 4. Create Segments
 
-            // Phase 3: Moon SOI Approach (Hyperbolic / Capture)
-            // SOI Entry時の位置・速度を計算
-            OrbitalState entryState_EarthFrame = earthToMoon.Evaluate(t_soi_entry);
-            
-            // 月の位置・速度 (Earth Frame)
-            // destination.OrbitData はParent(Earth)基準 (Unity Unit)
-            // メートルに変換して計算
-            Vector3 moonPosUnity = destination.OrbitData.CalculatePosition(t_soi_entry);
-            Vector3 moonPosMeters = moonPosUnity / (float)mapScale;
-            
-            double dt_v = 0.01;
-            Vector3 moonPosNextUnity = destination.OrbitData.CalculatePosition(t_soi_entry + dt_v);
-            Vector3 moonPosNextMeters = moonPosNextUnity / (float)mapScale;
-            
-            Vector3 moonVelMeters = (moonPosNextMeters - moonPosMeters) / (float)dt_v;
-            
-            // EvaluateはUnity Unitを返すので、メートルに戻して物理計算... 
-            // いや、KeplerOrbitの修正でEvaluateはUnity Unitを返すようになる。
-            // なので entryState_EarthFrame.Position は Unity Unit。
-            // 物理計算のために全部メートルにする必要がある。
-            // KeplerOrbit.Evaluateが返すのは「表示用」と考えたほうがいいが、
-            // ここでは物理計算の続きなので、KeplerOrbit内部の生データ(Meters)が欲しい場合がある。
-            // しかしインターフェース上はEvaluateしかない。
-            // よって、ここでも mapScale で割ってメートルに戻す。
-            
-            Vector3 entryPosMeters = entryState_EarthFrame.Position / (float)mapScale;
-            Vector3 entryVelMeters = entryState_EarthFrame.Velocity / (float)mapScale;
-
-            Vector3 relPos = entryPosMeters - moonPosMeters;
-            Vector3 relVel = entryVelMeters - moonVelMeters;
-
-            // ... (Simple Capture Logic)
-            
-            // SOI EntryからCaptureまで1時間くらいで遷移
-            double t_capture_end = t_intercept + 3600.0; // +1 hour
-
-            // Capture Orbit (Low Lunar Orbit)
-            // メートル単位
-            double r_lunar_orbit = destination.Radius.ToMeters() * 1.2;
-            if (r_lunar_orbit < destination.Radius.ToMeters() + 20000) r_lunar_orbit = destination.Radius.ToMeters() + 20000;
-
-            OrbitParameters lunarOrbitParams = new OrbitParameters
+            // Phase 0: Waiting on Parking Orbit
+            // requestTime から launchTime まで
+            if (launchTime > requestTime)
             {
-                SemiMajorAxis = r_lunar_orbit, // Meters
-                Eccentricity = 0.0,
-                Inclination = 0.0,
-                ArgumentOfPeriapsis = 0.0,
-                MeanMotion = Math.Sqrt((PhysicsConstants.GameGravitationalConstant * destination.Mass.Kilograms) / Math.Pow(r_lunar_orbit, 3)),
-                MeanAnomalyAtEpoch = 0.0
-            };
+                // Parking Orbit
+                OrbitParameters parkParams = new OrbitParameters
+                {
+                    SemiMajorAxis = r_park,
+                    Eccentricity = 0,
+                    Inclination = 0,
+                    ArgumentOfPeriapsis = 0,
+                    LongitudeOfAscendingNode = 0,
+                    MeanAnomalyAtEpoch = 0, // 仮
+                    MeanMotion = Math.Sqrt((PhysicsConstants.GameGravitationalConstant * origin.Mass.Kilograms) / Math.Pow(r_park, 3))
+                };
+                KeplerOrbit parkingOrbit = new KeplerOrbit(origin, parkParams, requestTime, launchTime);
+                plan.AddSegment(new TrajectorySegment(parkingOrbit));
+            }
 
-            KeplerOrbit lunarOrbit = new KeplerOrbit(destination, lunarOrbitParams, t_soi_entry, t_capture_end + 10000); 
-            plan.AddSegment(new TrajectorySegment(lunarOrbit));
+            // Phase 1: Transfer Orbit
+            // launchTime から arrivalTime まで
+            // 実際のホーマン遷移を計算
+            var transferResult = TrajectoryCalculator.CalculateHohmannTransfer(origin, r1, r2, launchTime);
+            plan.AddSegment(new TrajectorySegment(transferResult.orbit));
+            
+            double arrivalTime = launchTime + transferResult.duration;
+
+            // Phase 2: Capture / Parking at Destination
+            // 到着後の軌道（月の周回軌道）
+            // Low Lunar Orbit
+            double r_moon = destination.Radius.ToMeters();
+            double r_park_moon = r_moon + 50000.0; // +50km
+            
+            OrbitParameters moonParkParams = new OrbitParameters
+            {
+                SemiMajorAxis = r_park_moon,
+                Eccentricity = 0,
+                Inclination = 0,
+                ArgumentOfPeriapsis = 0,
+                LongitudeOfAscendingNode = 0,
+                MeanAnomalyAtEpoch = 0,
+                MeanMotion = Math.Sqrt((PhysicsConstants.GameGravitationalConstant * destination.Mass.Kilograms) / Math.Pow(r_park_moon, 3))
+            };
+            
+            // ずっと周回する（とりあえず1日分など）
+            KeplerOrbit moonOrbit = new KeplerOrbit(destination, moonParkParams, arrivalTime, arrivalTime + 86400 * 7);
+            plan.AddSegment(new TrajectorySegment(moonOrbit));
 
             return plan;
         }
-
-        // Helper: Convert Meters to Active Scale?
-        // MapManagerへの依存を持たせる。
     }
 }

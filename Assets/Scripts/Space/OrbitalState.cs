@@ -8,9 +8,9 @@ namespace SpaceLogistics.Space
     [System.Serializable]
     public struct OrbitalState
     {
-        public Vector3 Position; // 基準天体からの相対位置 (Unity Units)
-        public Vector3 Velocity; // 基準天体からの相対速度 (Unity Units / s)
-        public double Time;      // この状態の時刻 (Universe Time)
+        public Vector3 Position; // 基準天体からの相対位置 (Meters)
+        public Vector3 Velocity; // 基準天体からの相対速度 (Meters / s)
+        public double Time;      // この状態の時刻 (Universe Time [s])
 
         public OrbitalState(Vector3 position, Vector3 velocity, double time)
         {

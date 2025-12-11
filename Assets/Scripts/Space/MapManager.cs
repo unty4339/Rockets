@@ -26,6 +26,7 @@ namespace SpaceLogistics.Space
 
         // 1 Unity Unit = 1,000 km = 1,000,000 m
         public const float MapScale = 1e-6f;
+        public const float PhysicsScale = 1.0f; // 物理計算はメートル単位 (1.0)
 
         // Awake removed as base handles logic
 

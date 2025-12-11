@@ -13,14 +13,18 @@ namespace SpaceLogistics.Space
         public double Eccentricity;  // 離心率 (e)
         public double Inclination;   // 軌道傾斜角 (i)
         public double ArgumentOfPeriapsis; // 近点引数 (w)
+        public double LongitudeOfAscendingNode; // 昇交点赤経 (Omega)
         public double MeanAnomalyAtEpoch; // 元期における平均近点角 (M0)
         public double MeanMotion; // 平均運動 (n)
+
+        public double Period => 2.0 * Math.PI / MeanMotion; // 周期 (P)
 
         // Serialization Backing Fields
         [UnityEngine.SerializeField, UnityEngine.HideInInspector] private string _semiMajorAxisS;
         [UnityEngine.SerializeField, UnityEngine.HideInInspector] private string _eccentricityS;
         [UnityEngine.SerializeField, UnityEngine.HideInInspector] private string _inclinationS;
         [UnityEngine.SerializeField, UnityEngine.HideInInspector] private string _argPeriapsisS;
+        [UnityEngine.SerializeField, UnityEngine.HideInInspector] private string _lanS; // LON
         [UnityEngine.SerializeField, UnityEngine.HideInInspector] private string _meanAnomalyS;
         [UnityEngine.SerializeField, UnityEngine.HideInInspector] private string _meanMotionS;
 
@@ -30,6 +34,7 @@ namespace SpaceLogistics.Space
             _eccentricityS = Eccentricity.ToString("G17", System.Globalization.CultureInfo.InvariantCulture);
             _inclinationS = Inclination.ToString("G17", System.Globalization.CultureInfo.InvariantCulture);
             _argPeriapsisS = ArgumentOfPeriapsis.ToString("G17", System.Globalization.CultureInfo.InvariantCulture);
+            _lanS = LongitudeOfAscendingNode.ToString("G17", System.Globalization.CultureInfo.InvariantCulture);
             _meanAnomalyS = MeanAnomalyAtEpoch.ToString("G17", System.Globalization.CultureInfo.InvariantCulture);
             _meanMotionS = MeanMotion.ToString("G17", System.Globalization.CultureInfo.InvariantCulture);
         }
@@ -40,6 +45,7 @@ namespace SpaceLogistics.Space
             double.TryParse(_eccentricityS, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out Eccentricity);
             double.TryParse(_inclinationS, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out Inclination);
             double.TryParse(_argPeriapsisS, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out ArgumentOfPeriapsis);
+            double.TryParse(_lanS, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out LongitudeOfAscendingNode);
             double.TryParse(_meanAnomalyS, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out MeanAnomalyAtEpoch);
             double.TryParse(_meanMotionS, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out MeanMotion);
         }

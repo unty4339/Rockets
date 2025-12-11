@@ -25,7 +25,7 @@ namespace SpaceLogistics.Space
         public CelestialBody ActiveLocalBody; // ローカルビューでの中心天体
 
         // 1 Unity Unit = 1,000 km = 1,000,000 m
-        public const float MapScale = 1e-7f;
+        public const float MapScale = (float)PhysicsConstants.UnitScale;
         public const float PhysicsScale = 1.0f; // 物理計算はメートル単位 (1.0)
 
         // Awake removed as base handles logic
@@ -190,7 +190,7 @@ namespace SpaceLogistics.Space
                 
                 if (Time.frameCount % 200 == 0)
                 {
-                    Debug.Log($"[MapManager] {body.BodyName}: Time={time:F1}, PosMeters={pos}, n={body.OrbitData.MeanMotion:E2}, ScaledPos={body.transform.position}");
+                    // Debug.Log($"[MapManager] {body.BodyName}: Time={time:F1}, PosMeters={pos}, n={body.OrbitData.MeanMotion:E2}, ScaledPos={body.transform.position}");
                 }
                 
                 return true;

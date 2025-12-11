@@ -15,12 +15,12 @@ namespace SpaceLogistics.Missions
             FlightPlan plan = new FlightPlan();
 
             // 1. Parking Orbit (Low Earth Orbit)
-            double r_origin = origin.Radius.ToMeters(); 
+            double r_origin = origin.Radius.ToMeters();
             double r_park = r_origin + 200000.0; // +200km altitude
             
             double r1_meters = r_park;
-            double mapScale = MapManager.MapScale;
-            double r2_meters = destination.OrbitData.SemiMajorAxis / mapScale; // destination is Child of origin (or sibling logic adapted)
+            // double mapScale = MapManager.MapScale; // 不要
+            double r2_meters = destination.OrbitData.SemiMajorAxis; // destination is Child of origin (or sibling logic adapted)
 
             // 2. Transfer Calculation (Provisional)
             // Duration計算のため、Orientation 0 で仮計算
@@ -29,6 +29,8 @@ namespace SpaceLogistics.Missions
 
             double t_launch = requestTime; // Immediate launch
             double t_arrival = t_launch + transferDuration;
+
+            Debug.Log(t_arrival);
 
             // 3. Match Orientation
             // 到着時刻 t_arrival における月(Child)の位置(角度)を計算
@@ -72,7 +74,7 @@ namespace SpaceLogistics.Missions
             // Phase 3: Capture at Moon (Low Lunar Orbit)
             // 到着後の処理
             double r_moon = destination.Radius.ToMeters();
-            double r_park_moon = r_moon + 50000.0; 
+            double r_park_moon = r_moon + 200000.0; 
             
             OrbitParameters moonParkParams = new OrbitParameters
             {

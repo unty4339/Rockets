@@ -50,7 +50,7 @@ namespace SpaceLogistics.Core
 
             if (Time.frameCount % 200 == 0 && TimeScale > 0)
             {
-                Debug.Log($"[TimeManager] UniverseTime={UniverseTime:F1}, Scale={TimeScale}");
+                // Debug.Log($"[TimeManager] UniverseTime={UniverseTime:F1}, Scale={TimeScale}");
             }
         }
 

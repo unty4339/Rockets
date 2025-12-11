@@ -20,6 +20,7 @@ namespace SpaceLogistics.Core
         public double ToMeters() => Meters;
         public double ToKilometers() => Meters / 1000.0;
         public double ToAU() => Meters / 1.495978707e11;
+        public float ToUnityUnits() => (float)(Meters * PhysicsConstants.UnitScale);
 
         public static Distance operator +(Distance a, Distance b) => new Distance(a.Meters + b.Meters);
         public static Distance operator -(Distance a, Distance b) => new Distance(a.Meters - b.Meters);
@@ -89,5 +90,8 @@ namespace SpaceLogistics.Core
         // Real G = 6.674e-11
         // Adjusted to make Moon period (distance 30) around 60-120 seconds.
         public const double GameGravitationalConstant = 6.674e-11;
+
+        // 1 Unity Unit = 1,000 km = 1,000,000 m
+        public const double UnitScale = 1e-7;
     }
 }

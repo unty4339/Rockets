@@ -17,6 +17,9 @@ namespace SpaceLogistics.Space
         public Distance SOIRadius; // PhysicsTypes.Distance
         public bool HasAtmosphere;
 
+        [Header("Orbit Config")]
+        public Distance LowOrbitAltitude; // PhysicsTypes.Distance
+
         [Header("Map Positions")]
         public Vector3 AbstractGlobalPosition; // グローバルマップでの定位置 (アイコン表示用)
         public float LocalMapRadius = 30.0f; // ローカルマップの表示限界半径 (Visual Scale)
@@ -66,12 +69,14 @@ namespace SpaceLogistics.Space
         [SerializeField] private double _massKg;
         [SerializeField] private double _radiusKm;
         [SerializeField] private double _soiRadiusKm;
+        [SerializeField] private double _lowOrbitAltitudeKm;
 
         private void Awake()
         {
             Mass = new Mass(_massKg);
             Radius = Distance.FromKilometers(_radiusKm);
             SOIRadius = Distance.FromKilometers(_soiRadiusKm);
+            LowOrbitAltitude = Distance.FromKilometers(_lowOrbitAltitudeKm);
         }
 
         private void OnValidate()
@@ -80,6 +85,7 @@ namespace SpaceLogistics.Space
             Mass = new Mass(_massKg);
             Radius = Distance.FromKilometers(_radiusKm);
             SOIRadius = Distance.FromKilometers(_soiRadiusKm);
+            LowOrbitAltitude = Distance.FromKilometers(_lowOrbitAltitudeKm);
         }
 
         private void Start()

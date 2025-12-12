@@ -16,24 +16,24 @@ namespace SpaceLogistics.Editor
 
             // 1. Earth
             CelestialBody earth = CreateBody("Earth", spaceContainer.transform, 
-                massKg: 5.972e24, radiusKm: 6371, 
+                massKg: 5.972e24, radiusKm: 63710, 
                 orbitAxis: 0, globalPos: new Vector3(-10, 0, 0), 
-                color: Color.blue);
+                color: Color.blue, lowOrbitAltitudeKm: 200);
             earth.LocalMapRadius = 50.0f;  
 
             // 2. Moon (Orbiting Earth)
             // Distance: ~384,400 km = 384,400,000 meters
             CelestialBody moon = CreateBody("Moon", earth.transform, 
-                massKg: 7.342e22, radiusKm: 1737, 
+                massKg: 7.342e22, radiusKm: 17370, 
                 orbitAxis: 384400000.0, globalPos: Vector3.zero, 
-                color: Color.gray);
+                color: Color.gray, lowOrbitAltitudeKm: 100);
  
 
             // 3. Mars
             CelestialBody mars = CreateBody("Mars", spaceContainer.transform, 
                 massKg: 6.39e23, radiusKm: 3389, 
                 orbitAxis: 0, globalPos: new Vector3(10, 0, 0), 
-                color: new Color(1f, 0.3f, 0f)); 
+                color: new Color(1f, 0.3f, 0f), lowOrbitAltitudeKm: 300); 
  
 
             // 4. Phobos (Orbiting Mars)
@@ -41,14 +41,14 @@ namespace SpaceLogistics.Editor
             CelestialBody phobos = CreateBody("Phobos", mars.transform, 
                 massKg: 1.0659e16, radiusKm: 1000,  
                 orbitAxis: 9376000.0, globalPos: Vector3.zero, 
-                color: new Color(0.6f, 0.4f, 0.2f));
+                color: new Color(0.6f, 0.4f, 0.2f), lowOrbitAltitudeKm: 20);
 
             // 5. Deimos (Orbiting Mars)
             // Distance: ~23,463 km = 23,463,000 meters
             CelestialBody deimos = CreateBody("Deimos", mars.transform, 
                 massKg: 1.4762e15, radiusKm: 600, 
                 orbitAxis: 23463000.0, globalPos: Vector3.zero, 
-                color: new Color(0.5f, 0.3f, 0.1f));
+                color: new Color(0.5f, 0.3f, 0.1f), lowOrbitAltitudeKm: 10);
 
             Debug.Log("Solar System Generated: Earth, Moon, Mars, Phobos, Deimos");
             
@@ -56,7 +56,7 @@ namespace SpaceLogistics.Editor
             Debug.LogWarning("Please assign 'Earth' to ActiveLocalBody in MapManager manually or via script.");
         }
 
-        private static CelestialBody CreateBody(string name, Transform parent, double massKg, double radiusKm, double orbitAxis, Vector3 globalPos, Color color)
+        private static CelestialBody CreateBody(string name, Transform parent, double massKg, double radiusKm, double orbitAxis, Vector3 globalPos, Color color, double lowOrbitAltitudeKm = 100)
         {
             // 既存を探す
             GameObject old = GameObject.Find(name);
@@ -113,11 +113,6 @@ namespace SpaceLogistics.Editor
             // public Mass Mass; 
             // [SerializeField] private double _massKg;
             // Awake/OnValidate syncs them.
-            // BUT setters? 
-            // No setters defined in the snippet I saw?
-            // Let's check CelestialBody.cs content I saw in Step 624.
-            // Lines 71-76 Awake sets Mass = new Mass(_massKg).
-            // Lines 80-84 OnValidate sets Mass = new Mass(_massKg).
             // It does NOT show properties connecting Mass -> _massKg.
             // It shows `public Mass Mass;` which is a field of type struct Mass.
             // struct Mass might just be a wrapper.
@@ -150,6 +145,7 @@ namespace SpaceLogistics.Editor
             so.FindProperty("_massKg").doubleValue = massKg;
             so.FindProperty("_radiusKm").doubleValue = radiusKm;
             so.FindProperty("_soiRadiusKm").doubleValue = 0;
+            so.FindProperty("_lowOrbitAltitudeKm").doubleValue = lowOrbitAltitudeKm;
             so.ApplyModifiedProperties();
             
             // Parent Body

@@ -18,7 +18,7 @@ namespace SpaceLogistics.UI
             if (PauseButton) PauseButton.onClick.AddListener(() => SetTimeScale(0));
             if (Speed1xButton) Speed1xButton.onClick.AddListener(() => SetTimeScale(1f));
             if (Speed100xButton) Speed100xButton.onClick.AddListener(() => SetTimeScale(100f));
-            if (Speed10000xButton) Speed10000xButton.onClick.AddListener(() => SetTimeScale(10000f));
+            if (Speed10000xButton) Speed10000xButton.onClick.AddListener(() => SetTimeScale(50000f));
         }
 
         private void SetTimeScale(float scale)

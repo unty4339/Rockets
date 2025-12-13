@@ -22,7 +22,7 @@ public class OrbitalVerification : MonoBehaviour
         double currentTime = 0; // Epoch
         Debug.Log($"Requesting Plan at Time: {currentTime}");
         
-        var plan = MissionBuilder.CreateEarthToMoonPlan(Earth, Moon, currentTime);
+        var plan = MissionBuilder.CreatePlanetToMoonPlan(Earth, Moon, currentTime);
         
         Debug.Log($"Plan Created. Segments: {plan.Segments.Count}");
 

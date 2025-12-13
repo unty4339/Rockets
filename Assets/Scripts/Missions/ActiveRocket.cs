@@ -70,7 +70,7 @@ namespace SpaceLogistics.Missions
                 if (destBody.ParentBody == originBody || originBody.ParentBody == destBody || destBody.ParentBody == originBody.ParentBody)
                 {
                     // 同一系内、あるいは親子関係 (Moon Mission含む)
-                    CurrentFlightPlan = MissionBuilder.CreateEarthToMoonPlan(originBody, destBody, time);
+                    CurrentFlightPlan = MissionBuilder.CreatePlanetToMoonPlan(originBody, destBody, time);
                     
                     // 到着予想時刻の取得（最後のセグメントの終了時間）
                     if (CurrentFlightPlan.Segments.Count > 0)

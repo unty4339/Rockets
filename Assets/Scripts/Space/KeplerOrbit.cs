@@ -15,31 +15,34 @@ namespace SpaceLogistics.Space
         public double EndTime { get; private set; }
 
         private double _mu;
+        public double Epoch { get; private set; } // 基準時刻
 
-        public KeplerOrbit(CelestialBody body, OrbitParameters paramsData, double start, double end)
+        public KeplerOrbit(CelestialBody body, OrbitParameters paramsData, double start, double end, double epoch = -1.0)
         {
             ReferenceBody = body;
             Parameters = paramsData;
             StartTime = start;
             EndTime = end;
 
-            if (body != null)
+            // epochが指定されていない場合は StartTime をデフォルトとする
+            // (指定されている場合はその時刻を基準とする)
+            if (epoch < 0) Epoch = start;
+            else Epoch = epoch;
+
+             if (body != null)
             {
-                // PhysicsTypes.cs 内の PhysicsConstants を使用
                 double G = PhysicsConstants.GameGravitationalConstant;
-                // Mass is a struct, never null. Check Kilograms if mass is set (though default is 0).
-                // Or just proceed.
                 if (body.Mass.Kilograms > 0) 
                     _mu = G * body.Mass.Kilograms;
                 else
-                    _mu = G * 5.972e24; // Default Earth Mass (fallback)
+                    _mu = G * 5.972e24; 
             }
         }
 
         public OrbitalState Evaluate(double time)
         {
-            // 時間経過
-            double dt = time; // UniverseTimeそのものを使用 (Epoch=0前提)
+            // Epochからの経過時間を計算
+            double dt = time - Epoch; 
             
             double a = Parameters.SemiMajorAxis;
             double e = Parameters.Eccentricity;
@@ -47,10 +50,9 @@ namespace SpaceLogistics.Space
             double omega = Parameters.ArgumentOfPeriapsis * Mathf.Deg2Rad;
             double Omega = Parameters.LongitudeOfAscendingNode * Mathf.Deg2Rad; // 必要なら追加
             double n = Parameters.MeanMotion;
-            double M0 = Parameters.MeanAnomalyAtEpoch * Mathf.Deg2Rad; // Degree入力と仮定
+            double M0 = Parameters.MeanAnomalyAtEpoch * Mathf.Deg2Rad;
 
-            // 1. Mean Anomaly (M)
-            double M = M0 + n * time;
+            double M = M0 + n * dt;
 
             // 2. Solve Kepler/Hyperbolic
             double E_or_H = 0;

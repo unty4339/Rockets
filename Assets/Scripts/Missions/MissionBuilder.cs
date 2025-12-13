@@ -74,6 +74,7 @@ namespace SpaceLogistics.Missions
 
             // アポジーの角度を決定 (月の位置から phi ずらす)
             // ※外側への遷移で、月が後ろから追いつく形なら phi を引く
+            // double targetApogeeAngle = moonAngleAtSOI - phi;
             double targetApogeeAngle = moonAngleAtSOI - phi;
             
             // 近地点(打ち上げ点)はアポジーの180度反対側
@@ -164,7 +165,7 @@ namespace SpaceLogistics.Missions
                 MeanMotion = Math.Sqrt(mu_primary / Math.Pow(a_trans, 3))
             };
             // t_launch から t_soi_entry まで
-            var seg2 = new TrajectorySegment(new KeplerOrbit(planet, transParams, t_launch, t_soi_entry));
+            var seg2 = new TrajectorySegment(new KeplerOrbit(planet, transParams, t_launch, t_soi_entry, t_launch));
             seg2.phaseName = $"Transfer to {moon.BodyName}";
             seg2.type = TrajectoryType.HohmannTransfer;
             seg2.exitCondition = ExitCondition.EnterTargetSOI;
@@ -187,7 +188,7 @@ namespace SpaceLogistics.Missions
             
             // t_soi_entry から t_periapsis まで
             // 注意: KeplerOrbitクラスがEpoch(=t_periapsis)より前の時刻(t_soi_entry)を正しく計算できる前提
-            var keplerHyp = new KeplerOrbit(moon, approachParams, t_soi_entry, t_periapsis);
+            var keplerHyp = new KeplerOrbit(moon, approachParams, t_soi_entry, t_periapsis, t_periapsis);
             // 双曲線のパラメータを正しく反映させるため、KeplerOrbit内部での時刻扱い(t - Epoch)に注意が必要
             // もしKeplerOrbitがEpochプロパティを持たない場合、OrbitParametersのMeanAnomalyAtEpochの定義時刻を合わせる必要がある
             

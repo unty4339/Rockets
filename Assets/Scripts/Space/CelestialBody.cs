@@ -38,28 +38,8 @@ namespace SpaceLogistics.Space
         {
             get
             {
-                // 物理計算ベース
-                // r = a * (m/M)^(2/5)
-                // Fallback based on physical radius (meters) converted to scaled units, multiplied by factor
-                if (ParentBody == null) return (float)(Radius.Meters * MapManager.MapScale * 10.0); 
-
-                double m = Mass.Kilograms;
-                double M = ParentBody.Mass.Kilograms;
-                if (M <= 0) return (float)(Radius.Meters * MapManager.MapScale * 3.0); 
-
-                // 軌道長半径 (Local Map上の距離)
-                double a = OrbitData.SemiMajorAxis;
-                if (a <= 0) 
-                {
-                     // 中心天体の場合
-                     return (float)(Radius.Meters * MapManager.MapScale * 5.0);
-                }
-
-                double ratio = m / M;
-                double r_soi = a * System.Math.Pow(ratio, 0.4);
-
-                // Convert Meters to Unity Units
-                return (float)(r_soi * MapManager.MapScale);
+                // 理論値計算をやめ、設定値をそのままUnityスケールに変換して返す
+                return SOIRadius.ToUnityUnits();
             }
         }
 

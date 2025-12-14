@@ -41,6 +41,7 @@ namespace SpaceLogistics.Rocketry
             double tanNu2 = sqrtTerm * Math.Tan(E / 2.0);
             return 2.0 * Math.Atan(tanNu2);
         }
+
         /// <summary>
         /// アポジー会合仮定に基づき、主星(Primary)からの遠地点距離(ra)を与えたときの、
         /// ターゲット天体(Moon)周回の近点距離(rp)を計算する。
@@ -79,12 +80,6 @@ namespace SpaceLogistics.Rocketry
             
             // A. ターゲット天体の速度 (円軌道近似)
             double v_target_mag = Math.Sqrt(mu_primary / r_target_dist);
-            // 座標系定義: ターゲットの位置をY軸上(0, r_target)とする場合、速度は(-v, 0)だが、
-            // ここでは相対速度の大きさだけが重要なので、単純化して計算する。
-            
-            // 計算しやすい座標系:
-            // ターゲット位置: (r_target, 0)
-            // ターゲット速度: (0, v_target)
             Vector2 v_target = new Vector2(0, (float)v_target_mag);
 
             // B. 宇宙船の速度 (楕円軌道の遠地点)
@@ -133,6 +128,7 @@ namespace SpaceLogistics.Rocketry
 
         /// <summary>
         /// 指定した衛星周回の近点高度を実現する、遷移軌道の遠地点半径(ra)を探索する (二分法)
+        /// 【修正版】反時計回り(Prograde)になるよう、月の軌道の内側(ra < r_moon)を探索します。
         /// </summary>
         public static double FindOptimalApogeeRadiusForMoonTransfer(
             double targetPeriapsisRadius, // 目標とする衛星の近点半径 (r_target_park)
@@ -144,11 +140,11 @@ namespace SpaceLogistics.Rocketry
             int maxIterations = 30
         )
         {
-            // 探索範囲の設定
-            // 下限: 衛星軌道より少し手前 (SOI境界の手前側)
-            // 上限: 衛星軌道より奥 (SOI境界の奥側)
+            // 探索範囲の設定 (Prograde軌道を狙うため、月の内側のみを探索)
+            // 下限: SOI境界が届くギリギリ手前
+            // 上限: 月の軌道半径そのもの (ここが最もrpが小さくなる=衝突コース)
             double min_ra = r_target_dist - r_target_soi * 0.99; 
-            double max_ra = r_target_dist + r_target_soi * 0.99; 
+            double max_ra = r_target_dist; 
 
             for (int i = 0; i < maxIterations; i++)
             {
@@ -160,26 +156,30 @@ namespace SpaceLogistics.Rocketry
 
                 if (double.IsNaN(calculated_rp))
                 {
-                    // 三角形不成立（通常は遠地点が低すぎてSOIに届いていない）
+                    // 三角形不成立 (通常はraが小さすぎてSOIに届いていない)
+                    // 内側を広げる必要があるので、minを上げる
                     min_ra = mid_ra;
                     continue;
                 }
 
-                // 二分法の更新ルール
-                // raが大きい(外側を狙う) -> 相対速度ベクトルのずれが大きくなる -> rpが大きくなる
-                // よって単調増加関数として扱う
+                // 二分法の更新ルール (Prograde/内側領域の場合)
+                // ra が増える(月に近づく) -> 相対位置ベクトルのずれが減る -> rp が小さくなる
+                // つまり「単調減少関数」として扱います。
+
                 if (calculated_rp < targetPeriapsisRadius)
                 {
-                    // 近すぎる(衝突コース) -> もっと外側(ra大)を狙う
-                    min_ra = mid_ra;
+                    // 近すぎる(衝突コース寄り) -> 離れる必要がある
+                    // 内側領域なので、raを小さくする(月から遠ざける)
+                    max_ra = mid_ra;
                 }
                 else
                 {
-                    // 遠すぎる -> もっと内側(ra小)を狙う
-                    max_ra = mid_ra;
+                    // 遠すぎる -> 近づける必要がある
+                    // 内側領域なので、raを大きくする(月に近づける)
+                    min_ra = mid_ra;
                 }
 
-                // 収束判定 (誤差100m以内なら良しとする)
+                // 収束判定
                 if (Math.Abs(calculated_rp - targetPeriapsisRadius) < 100.0)
                 {
                     return mid_ra;

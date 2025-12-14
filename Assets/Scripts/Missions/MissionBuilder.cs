@@ -123,17 +123,10 @@ namespace SpaceLogistics.Missions
             );
             
             double t_periapsis = t_soi_entry + timeInSOI;
-
+            
             // F. 双曲線の角度設定
-            // 1. 相対速度ベクトルの角度 (入射方向)
-            Vector2 v_rel = v_ship_vec - v_moon_vec;
-            double v_inf_angle = Math.Atan2(v_rel.y, v_rel.x);
 
-            // 2. ベータ角 (漸近線と近点軸の角度)
-            // e_hyp は前のステップで計算済み (e_hyp = 1 + rp * v_inf^2 / mu)
-            double beta = Math.Acos(1.0 / e_hyp); 
-
-            // 3. 回転方向の判定 (外積を使用)
+            // 1. 相対位置ベクトル r_rel の計算
             // 宇宙船の位置ベクトル (SOI進入時 = アポジー位置)
             Vector2 pos_ship_vec = new Vector2(
                 (float)(optimal_ra * Math.Cos(targetApogeeAngle)),
@@ -141,32 +134,32 @@ namespace SpaceLogistics.Missions
             );
             
             // 月の位置ベクトル (SOI進入時)
-            // moonPosAtSOI は Vector3 なので Vector2 にキャスト
             Vector2 pos_moon_vec = new Vector2(moonPosAtSOI.x, moonPosAtSOI.y);
 
-            // 相対位置ベクトル r_rel
+            // 相対位置ベクトル r_rel (月中心)
             Vector2 r_rel = pos_ship_vec - pos_moon_vec;
 
-            // 2D外積 (z成分) = rx * vy - ry * vx
-            double crossProduct = r_rel.x * v_rel.y - r_rel.y * v_rel.x;
-
-            // 4. 近点引数 omega の決定
-            double omega_moon_rad;
+            // 2. 現在の半径における真近点角 (nu) の計算
+            // 以前のベータ角による計算は無限遠を仮定していたため、
+            // 有限距離にある現在の位置から逆算して整合性を取ります。
             
-            // 外積の符号で回転方向を分岐
-            if (crossProduct >= 0)
-            {
-                // 反時計回り (CCW): 左に曲がる
-                omega_moon_rad = v_inf_angle + beta;
-            }
-            else
-            {
-                // 時計回り (CW): 右に曲がる
-                omega_moon_rad = v_inf_angle - beta;
-            }
+            // 双曲線の軌道方程式: r = |a|(e^2 - 1) / (1 + e cos(nu)) から cos(nu) を逆算
+            double r_current = r_rel.magnitude; 
+            double num = (a_hyp_abs * (e_hyp * e_hyp - 1.0) / r_current) - 1.0;
+            double cosNu = num / e_hyp;
+            
+            // 数値誤差対策
+            cosNu = Math.Clamp(cosNu, -1.0, 1.0);
+            
+            // これから近点に向かう（接近フェーズ）ため、真近点角は負の値をとる
+            double nu_rad = -Math.Acos(cosNu);
 
+            // 3. 近点引数 omega の決定
+            // 現在の位置角度 phi_pos = omega + nu  =>  omega = phi_pos - nu
+            double phi_pos = Math.Atan2(r_rel.y, r_rel.x);
+            double omega_moon_rad = phi_pos - nu_rad;
+            
             double omega_moon_deg = omega_moon_rad * Mathf.Rad2Deg;
-
 
             // ==========================================
             //      セグメント(Phase)の生成と登録

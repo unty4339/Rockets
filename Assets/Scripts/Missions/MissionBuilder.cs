@@ -32,7 +32,7 @@ namespace SpaceLogistics.Missions
             double r_moon_soi = moon.SOIRadius.ToMeters();
             
             double r_moon_surface = moon.Radius.ToMeters();
-            double r_parking_moon = r_moon_surface + 50000.0; // 目標: 月高度50km
+            double r_parking_moon = r_moon_surface + 500000.0; // 目標: 月高度50km
 
             // --- 1. 最適な遷移軌道の探索 (Apogee Interaction) ---
             // アポジー会合仮定: 「遷移軌道の遠地点 = 月のSOI境界への進入点」となるような距離 ra を探す
@@ -75,7 +75,7 @@ namespace SpaceLogistics.Missions
             // アポジーの角度を決定 (月の位置から phi ずらす)
             // ※外側への遷移で、月が後ろから追いつく形なら phi を引く
             // double targetApogeeAngle = moonAngleAtSOI - phi;
-            double targetApogeeAngle = moonAngleAtSOI - phi;
+            double targetApogeeAngle = moonAngleAtSOI + phi;
             
             // 近地点(打ち上げ点)はアポジーの180度反対側
             double omega_rad = targetApogeeAngle - Math.PI; 
@@ -125,14 +125,46 @@ namespace SpaceLogistics.Missions
             double t_periapsis = t_soi_entry + timeInSOI;
 
             // F. 双曲線の角度設定
-            // 相対速度ベクトル(v_inf)の向きが入射方向
-            double v_inf_angle = Math.Atan2(v_ship_vec.y - v_moon_vec.y, v_ship_vec.x - v_moon_vec.x);
-            // 双曲線の近点の向き(Argument of Periapsis)を計算
-            // 入射方向からベータ角(turning angleの半分)だけ曲がった方向が近点
-            double beta = Math.Acos(1.0 / e_hyp); // 漸近線と近点軸の角度
-            // 時計回りか反時計回りかで符号が変わるが、ここでは単純化して設定
-            // 実際は外積の符号判定が必要
-            double omega_moon_rad = v_inf_angle + beta; // 仮置き
+            // 1. 相対速度ベクトルの角度 (入射方向)
+            Vector2 v_rel = v_ship_vec - v_moon_vec;
+            double v_inf_angle = Math.Atan2(v_rel.y, v_rel.x);
+
+            // 2. ベータ角 (漸近線と近点軸の角度)
+            // e_hyp は前のステップで計算済み (e_hyp = 1 + rp * v_inf^2 / mu)
+            double beta = Math.Acos(1.0 / e_hyp); 
+
+            // 3. 回転方向の判定 (外積を使用)
+            // 宇宙船の位置ベクトル (SOI進入時 = アポジー位置)
+            Vector2 pos_ship_vec = new Vector2(
+                (float)(optimal_ra * Math.Cos(targetApogeeAngle)),
+                (float)(optimal_ra * Math.Sin(targetApogeeAngle))
+            );
+            
+            // 月の位置ベクトル (SOI進入時)
+            // moonPosAtSOI は Vector3 なので Vector2 にキャスト
+            Vector2 pos_moon_vec = new Vector2(moonPosAtSOI.x, moonPosAtSOI.y);
+
+            // 相対位置ベクトル r_rel
+            Vector2 r_rel = pos_ship_vec - pos_moon_vec;
+
+            // 2D外積 (z成分) = rx * vy - ry * vx
+            double crossProduct = r_rel.x * v_rel.y - r_rel.y * v_rel.x;
+
+            // 4. 近点引数 omega の決定
+            double omega_moon_rad;
+            
+            // 外積の符号で回転方向を分岐
+            if (crossProduct >= 0)
+            {
+                // 反時計回り (CCW): 左に曲がる
+                omega_moon_rad = v_inf_angle + beta;
+            }
+            else
+            {
+                // 時計回り (CW): 右に曲がる
+                omega_moon_rad = v_inf_angle - beta;
+            }
+
             double omega_moon_deg = omega_moon_rad * Mathf.Rad2Deg;
 
 

@@ -172,6 +172,8 @@ MonoBehaviour:
   SOIRadius:
     Meters: 0
   HasAtmosphere: 0
+  LowOrbitAltitude:
+    Meters: 0
   AbstractGlobalPosition: {x: 0, y: 0, z: 0}
   LocalMapRadius: 30
   ParentBody: {fileID: 1760387550}
@@ -195,6 +197,7 @@ MonoBehaviour:
   _massKg: 10659000000000000
   _radiusKm: 1000
   _soiRadiusKm: 0
+  _lowOrbitAltitudeKm: 0
 --- !u!1 &224102234
 GameObject:
   m_ObjectHideFlags: 0
@@ -1311,6 +1314,8 @@ MonoBehaviour:
   SOIRadius:
     Meters: 0
   HasAtmosphere: 0
+  LowOrbitAltitude:
+    Meters: 0
   AbstractGlobalPosition: {x: 0, y: 0, z: 0}
   LocalMapRadius: 30
   ParentBody: {fileID: 1760387550}
@@ -1334,6 +1339,7 @@ MonoBehaviour:
   _massKg: 1476200000000000
   _radiusKm: 600
   _soiRadiusKm: 0
+  _lowOrbitAltitudeKm: 0
 --- !u!1 &845713436
 GameObject:
   m_ObjectHideFlags: 0
@@ -2187,6 +2193,8 @@ MonoBehaviour:
   SOIRadius:
     Meters: 0
   HasAtmosphere: 0
+  LowOrbitAltitude:
+    Meters: 0
   AbstractGlobalPosition: {x: -10, y: 0, z: 0}
   LocalMapRadius: 50
   ParentBody: {fileID: 0}
@@ -2210,6 +2218,7 @@ MonoBehaviour:
   _massKg: 5.972e+24
   _radiusKm: 63710
   _soiRadiusKm: 0
+  _lowOrbitAltitudeKm: 0
 --- !u!1 &1118019797
 GameObject:
   m_ObjectHideFlags: 0
@@ -2675,8 +2684,10 @@ MonoBehaviour:
   Radius:
     Meters: 17370000
   SOIRadius:
-    Meters: 0
+    Meters: 66100000
   HasAtmosphere: 0
+  LowOrbitAltitude:
+    Meters: 0
   AbstractGlobalPosition: {x: 0, y: 0, z: 0}
   LocalMapRadius: 30
   ParentBody: {fileID: 1059832166}
@@ -2699,7 +2710,8 @@ MonoBehaviour:
   BodyRenderer: {fileID: 946938784}
   _massKg: 7.342e+22
   _radiusKm: 17370
-  _soiRadiusKm: 0
+  _soiRadiusKm: 66100
+  _lowOrbitAltitudeKm: 0
 --- !u!1 &1218073300
 GameObject:
   m_ObjectHideFlags: 0
@@ -3363,6 +3375,8 @@ MonoBehaviour:
   SOIRadius:
     Meters: 0
   HasAtmosphere: 0
+  LowOrbitAltitude:
+    Meters: 0
   AbstractGlobalPosition: {x: 10, y: 0, z: 0}
   LocalMapRadius: 30
   ParentBody: {fileID: 0}
@@ -3386,6 +3400,7 @@ MonoBehaviour:
   _massKg: 6.39e+23
   _radiusKm: 3389
   _soiRadiusKm: 0
+  _lowOrbitAltitudeKm: 0
 --- !u!1 &1767256916
 GameObject:
   m_ObjectHideFlags: 0

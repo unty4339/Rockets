@@ -115,8 +115,8 @@ namespace SpaceLogistics.Space
             float r = VisualSOIRadius;
             
             // 安全策: 小さすぎると見えないのでMinキャップ
-            float bodyRadiusUnit = (float)(Radius.Meters * MapManager.MapScale);
-            if (r < bodyRadiusUnit * 4.0f) r = bodyRadiusUnit * 5.0f;
+            // float bodyRadiusUnit = (float)(Radius.Meters * MapManager.MapScale);
+            // if (r < bodyRadiusUnit * 4.0f) r = bodyRadiusUnit * 5.0f;
 
             for (int i = 0; i < 50; i++)
             {

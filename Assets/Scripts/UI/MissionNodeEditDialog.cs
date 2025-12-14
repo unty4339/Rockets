@@ -97,14 +97,27 @@ namespace SpaceLogistics.UI
 
             BodyDropdown.ClearOptions();
 
+            // イベントリスナーを一度削除（重複登録を防ぐ）
+            BodyDropdown.onValueChanged.RemoveAllListeners();
+
+            RefreshBodyList(); // リストを更新
+
             if (MapManager.Instance != null && MapManager.Instance.AllBodies.Count > 0)
             {
                 var bodyNames = MapManager.Instance.AllBodies.Select(b => b.BodyName).ToList();
+                Debug.Log($"MissionNodeEditDialog: Adding {bodyNames.Count} bodies to dropdown: {string.Join(", ", bodyNames)}");
                 BodyDropdown.AddOptions(bodyNames);
+                
+                // ドロップダウンのオプション数が正しく設定されたか確認
+                Debug.Log($"MissionNodeEditDialog: Dropdown options count after AddOptions: {BodyDropdown.options.Count}");
+                
+                // UIを強制的に更新
+                BodyDropdown.RefreshShownValue();
             }
             else
             {
                 BodyDropdown.AddOptions(new List<string> { "No Bodies Available" });
+                Debug.LogWarning("MissionNodeEditDialog: No celestial bodies found. Make sure CelestialBody objects exist in the scene.");
             }
 
             BodyDropdown.onValueChanged.AddListener(OnBodyChanged);
@@ -140,6 +153,10 @@ namespace SpaceLogistics.UI
             _isNewNode = (node == null);
             _onApplyCallback = onApply;
 
+            // ダイアログを開く時に天体リストを更新（MapManagerが初期化されている可能性があるため）
+            // UpdateBodyDropdown内でRefreshBodyListが呼ばれるので、ここではUpdateBodyDropdownだけ呼ぶ
+            UpdateBodyDropdown();
+
             if (_isNewNode)
             {
                 _editingNode = new MissionNode();
@@ -162,6 +179,38 @@ namespace SpaceLogistics.UI
                 DialogTitleText.text = _isNewNode ? "Add New Node" : "Edit Node";
         }
 
+        /// <summary>
+        /// MapManagerのAllBodiesリストを更新する（遅延初期化対応）
+        /// </summary>
+        private void RefreshBodyList()
+        {
+            if (MapManager.Instance == null)
+            {
+                Debug.LogWarning("MissionNodeEditDialog: MapManager.Instance is null. Make sure MapManager exists in the scene.");
+                return;
+            }
+
+            // 常にシーン内のすべてのCelestialBodyを検索して更新（AllBodiesが不完全な場合があるため）
+            CelestialBody[] bodies = null;
+            
+            #if UNITY_2021_2_OR_NEWER
+            bodies = UnityEngine.Object.FindObjectsByType<CelestialBody>(UnityEngine.FindObjectsSortMode.None);
+            #else
+            bodies = UnityEngine.Object.FindObjectsOfType<CelestialBody>();
+            #endif
+            
+            if (bodies != null && bodies.Length > 0)
+            {
+                MapManager.Instance.AllBodies.Clear();
+                MapManager.Instance.AllBodies.AddRange(bodies);
+                Debug.Log($"MissionNodeEditDialog: Refreshed AllBodies list. Found {bodies.Length} celestial bodies: {string.Join(", ", bodies.Select(b => b.BodyName))}");
+            }
+            else
+            {
+                Debug.LogWarning("MissionNodeEditDialog: No CelestialBody objects found in the scene. Please add CelestialBody objects to the scene.");
+            }
+        }
+
         private void LoadNodeData()
         {
             if (_editingNode == null) return;
@@ -181,9 +230,16 @@ namespace SpaceLogistics.UI
             if (BodyDropdown != null && _editingNode.TargetBody != null && MapManager.Instance != null)
             {
                 int bodyIndex = MapManager.Instance.AllBodies.IndexOf(_editingNode.TargetBody);
-                if (bodyIndex >= 0)
+                Debug.Log($"MissionNodeEditDialog: Setting dropdown value to {bodyIndex} for body {_editingNode.TargetBody.BodyName}. Dropdown has {BodyDropdown.options.Count} options.");
+                if (bodyIndex >= 0 && bodyIndex < BodyDropdown.options.Count)
                 {
                     BodyDropdown.value = bodyIndex;
+                    // UIを強制的に更新
+                    BodyDropdown.RefreshShownValue();
+                }
+                else if (bodyIndex >= 0)
+                {
+                    Debug.LogWarning($"MissionNodeEditDialog: bodyIndex {bodyIndex} is out of range. Dropdown has {BodyDropdown.options.Count} options.");
                 }
             }
 
@@ -746,6 +802,12 @@ namespace SpaceLogistics.UI
             GameObject contentObj = new GameObject("Content");
             contentObj.transform.SetParent(viewportObj.transform, false);
             VerticalLayoutGroup contentVlg = contentObj.AddComponent<VerticalLayoutGroup>();
+            contentVlg.childControlWidth = true;  // 子要素の幅を制御
+            contentVlg.childControlHeight = false; // 子要素の高さは制御しない（各Itemが高さ30に設定されているため）
+            contentVlg.childForceExpandWidth = true; // 子要素を幅いっぱいに展開
+            contentVlg.childForceExpandHeight = false;
+            contentVlg.spacing = 0;
+            contentVlg.padding = new RectOffset(0, 0, 0, 0);
             ContentSizeFitter contentCsf = contentObj.AddComponent<ContentSizeFitter>();
             contentCsf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             scrollRect.content = contentObj.GetComponent<RectTransform>();
@@ -759,9 +821,14 @@ namespace SpaceLogistics.UI
             GameObject itemObj = new GameObject("Item");
             itemObj.transform.SetParent(contentObj.transform, false);
             Toggle itemToggle = itemObj.AddComponent<Toggle>();
-            HorizontalLayoutGroup itemHlg = itemObj.AddComponent<HorizontalLayoutGroup>();
             RectTransform itemRt = itemObj.GetComponent<RectTransform>();
+            // anchorMinとanchorMaxを左右いっぱいに設定（VerticalLayoutGroupが制御するが、念のため）
+            itemRt.anchorMin = new Vector2(0, 0);
+            itemRt.anchorMax = new Vector2(1, 0);
+            itemRt.pivot = new Vector2(0.5f, 0);
+            // 高さは30に固定、幅は親（Content）いっぱい（VerticalLayoutGroupのchildControlWidthにより制御される）
             itemRt.sizeDelta = new Vector2(0, 30);
+            itemRt.anchoredPosition = Vector2.zero;
 
             // Item Background
             GameObject itemBgObj = new GameObject("Item Background");
@@ -772,6 +839,8 @@ namespace SpaceLogistics.UI
             RectTransform itemBgRt = itemBgObj.GetComponent<RectTransform>();
             itemBgRt.anchorMin = Vector2.zero;
             itemBgRt.anchorMax = Vector2.one;
+            itemBgRt.pivot = new Vector2(0.5f, 0.5f);
+            itemBgRt.anchoredPosition = Vector2.zero;
             itemBgRt.sizeDelta = Vector2.zero;
 
             // Item Label
@@ -781,15 +850,27 @@ namespace SpaceLogistics.UI
             itemLabelText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             itemLabelText.fontSize = 14;
             itemLabelText.color = Color.white;
-            itemToggle.graphic = itemLabelText;
+            itemLabelText.alignment = TextAnchor.MiddleLeft;
+            // itemToggle.graphicは設定しない（Textは常に表示されるべきなので）
+            // Dropdownコンポーネントが自動的にitemTextプロパティでTextを管理する
             RectTransform itemLabelRt = itemLabelObj.GetComponent<RectTransform>();
-            itemLabelRt.anchorMin = Vector2.zero;
-            itemLabelRt.anchorMax = Vector2.one;
-            itemLabelRt.sizeDelta = Vector2.zero;
+            // anchorMinとanchorMaxを異なる位置に設定することで、幅が正しく計算される
+            itemLabelRt.anchorMin = new Vector2(0, 0);
+            itemLabelRt.anchorMax = new Vector2(1, 1);
+            itemLabelRt.pivot = new Vector2(0, 0.5f);
+            // offsetMin/offsetMaxで左側に10ピクセルのパディングを追加
+            // offsetMin/offsetMaxを使用する場合、anchoredPositionとsizeDeltaは自動計算される
             itemLabelRt.offsetMin = new Vector2(10, 0);
+            itemLabelRt.offsetMax = Vector2.zero;
 
             dropdown.itemText = itemLabelText;
             dropdown.template = templateRt;
+
+            // Dropdownの正しい初期化のため、targetGraphicも設定
+            if (img != null)
+            {
+                dropdown.targetGraphic = img;
+            }
 
             RectTransform rt = dropdownObj.GetComponent<RectTransform>();
             rt.anchorMin = anchorMin;

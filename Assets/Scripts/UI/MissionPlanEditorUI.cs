@@ -481,11 +481,13 @@ namespace SpaceLogistics.UI
                 GameObject scrollView = new GameObject("NodeListScrollView");
                 scrollView.transform.SetParent(transform, false);
                 RectTransform svRt = scrollView.AddComponent<RectTransform>();
-                svRt.anchorMin = new Vector2(0, 0);
+                svRt.anchorMin = new Vector2(0, 0.3f);  // 下部30%から上部まで
                 svRt.anchorMax = new Vector2(0.5f, 1);
-                svRt.pivot = new Vector2(0, 0.5f);
-                svRt.anchoredPosition = new Vector2(20, 0);
-                svRt.sizeDelta = new Vector2(-40, -200);
+                svRt.pivot = new Vector2(0, 1);
+                svRt.anchoredPosition = Vector2.zero;
+                // offsetMin/offsetMaxでマージンを設定（左20px、右10px、上180px、下0px）
+                svRt.offsetMin = new Vector2(20, 0);  // 左、下
+                svRt.offsetMax = new Vector2(-10, -180);  // 右、上
 
                 Image svImg = scrollView.AddComponent<Image>();
                 svImg.color = new Color(0.2f, 0.2f, 0.2f, 0.8f);
@@ -508,7 +510,7 @@ namespace SpaceLogistics.UI
                 NodeItemPrefab = CreateNodeItemPrefab();
             }
 
-            // 6. 統計表示
+            // 6. 統計表示（右側上部に配置）
             if (StatsText == null)
             {
                 GameObject statsObj = new GameObject("StatsText");
@@ -520,11 +522,13 @@ namespace SpaceLogistics.UI
                 txt.alignment = TextAnchor.UpperLeft;
                 
                 RectTransform rt = statsObj.GetComponent<RectTransform>();
-                rt.anchorMin = new Vector2(0.5f, 0.5f);
-                rt.anchorMax = new Vector2(0.5f, 0.5f);
+                rt.anchorMin = new Vector2(0.5f, 0.3f);  // 右側、下部30%から
+                rt.anchorMax = new Vector2(1, 1);  // 上部まで
                 rt.pivot = new Vector2(0, 1);
-                rt.anchoredPosition = new Vector2(20, 100);
-                rt.sizeDelta = new Vector2(400, 200);
+                rt.anchoredPosition = Vector2.zero;
+                // offsetMin/offsetMaxでマージンを設定（左20px、右20px、上180px、下0px）
+                rt.offsetMin = new Vector2(20, 0);  // 左、下
+                rt.offsetMax = new Vector2(-20, -180);  // 右、上
                 
                 StatsText = txt;
             }

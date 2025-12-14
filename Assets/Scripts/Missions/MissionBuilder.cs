@@ -224,15 +224,26 @@ namespace SpaceLogistics.Missions
             plan.AddSegment(seg3);
 
             // Phase 4: Capture (Circular Orbit)
+            // 修正点: 双曲線軌道のパラメータを引き継いで、位置と回転方向を合わせる
+            double inclination = approachParams.Inclination; // 双曲線と同じ回転面/方向にする
+            
             OrbitParameters captureParams = new OrbitParameters
             {
                 SemiMajorAxis = r_parking_moon,
                 Eccentricity = 0,
-                Inclination = 0,
-                ArgumentOfPeriapsis = 0,
+                
+                // 修正点: 双曲線軌道のパラメータを引き継いで、位置と回転方向を合わせる
+                Inclination = inclination,            // 双曲線と同じ回転面/方向にする
+                ArgumentOfPeriapsis = omega_moon_deg, // 開始位置を双曲線の近点位置に合わせる
+                
+                // 円軌道なので近点はありませんが、計算上「近点通過時刻(=t_periapsis)」から
+                // 開始するため、その時点での角度(omega)をセットすることで位置が連続します。
+                
                 MeanMotion = Math.Sqrt(mu_moon / Math.Pow(r_parking_moon, 3))
             };
-            var seg4 = new TrajectorySegment(new KeplerOrbit(moon, captureParams, t_periapsis, t_periapsis + 86400));
+            
+            // t_periapsis から開始（このとき MeanAnomaly = 0 となり、上記 omega の位置からスタートする）
+            var seg4 = new TrajectorySegment(new KeplerOrbit(moon, captureParams, t_periapsis, t_periapsis + 8640000));
             seg4.phaseName = $"Orbiting {moon.BodyName}";
             seg4.type = TrajectoryType.Circularize;
             plan.AddSegment(seg4);
